@@ -158,22 +158,22 @@ So in this case they each have set of possible capabiltiies.
 
 ## More Thinking
 
-Element - Base class for every element in a pipeline.
-Bin - Element that contains other elements. Elements within a Bin have a Name. Only elements within the same Bin can be connected.
-Pad - Input or Output of data
-SinkPad - from the POV of the element, where data is received.
-SendPad - from the stand point of the element, where data is sent.
-GhostSinkPad - a particular type of sink pad that can exist on a Bin and acts as a relay for a SinkPad of an element within the bin.
-GhostSendPad - a particular type of send pad that can exist on a Bin and acts as a relay for a SendPad of an element within the bin.
++ Element - Base class for every element in a pipeline.
++ Bin - Element that contains other elements. Elements within a Bin have a Name. Only elements within the same Bin can be connected.
++ Pad - Input or Output of data
++ SinkPad - from the POV of the element, where data is received.
++ SendPad - from the stand point of the element, where data is sent.
++ GhostSinkPad - a particular type of sink pad that can exist on a Bin and acts as a relay for a SinkPad of an element within the bin.
++ GhostSendPad - a particular type of send pad that can exist on a Bin and acts as a relay for a SendPad of an element within the bin.
 
 An important part of this process is that available elements need to be discoverable. Hence, they need to have some sort of metadata in a library of some sort. The metadata should be able to describe what they COULD do. This metadata can be auto generated from the class implementation of an Element in different languages. We'll call this metadata a manifest.
 
 The manifest will describe the pads that a element COULD have.
 
 Pads in the manifest can have Availability.
-	Forever - pad is always around
-	Dynamic - pad can come and go
-	Request - pad can be requested
++ Forever - pad is always around
++ Dynamic - pad can come and go
++ Request - pad can be requested
 
 The Element base class maintains a collection of current pads. It raises events as pads are added and removed.
 
@@ -187,7 +187,7 @@ PadRemoved - raised when a pad is removed from an element
 One of the things to keep in mind is that pads don't really send "data" streams, as they might in a media system. They make available operations, which may result in pulling data, or subscribing to events to receive data. But it's not just a stream of buffers.
 
 Example of a filesrc element. The job of this element is to take a glob or some fashion of search parameter for the local file system, and watch it. Pads are added and removed as files come and go.
-
+```
 Pads:
 
   Sink: sink
@@ -202,7 +202,7 @@ Pads:
       range-events: true
     gib/binary-navigator:
       range-events: false
-    
+    ```
 
 The idea here is that the Pad takes a single input, which is of type text/plain, and will be parsed as a glob expression. It exposes a dynamic send pad, with a template name that indicates how dynamically created pads will look. It can emit two types of stream formats for these items. binary-stream indicates that it receive a handle to something that acts as a read-only forward-only Stream. It has an attribute set that it's seekable. So, the pad can basical provides a Stream. The receiving element can navigate that stream forward only as it pleases. The second option is a binary-event-stream. This is a bit more special, because it indicates the receiving element gets a handle to a EventStream, or something. Which also supports raising events. So, it can notify of file changes.
 
@@ -211,7 +211,7 @@ The second cap may only be offered if running on operating systems that support 
 The fact that it's a Dynamic pad though because that at runtime, once the pipeline is Running, actual pads will be added conforming to the template. One for each discovered file. There may be thousands of pads added at runtime. But that's okay. Pads are supposed to be like ItemGroups and Properties. And we often have large collections of items in ItemGroups.
 
 Now imagine a Roslyn element. The idea of a Roslyn element would be that it accepts a list of C# files, and outputs a single executable. And optionally PDB.
-
+```
 Pads:
 
   Sink: source_%08x
@@ -233,7 +233,7 @@ Pads:
   Capabilities:
     gib/binary-navigator:
       range-events: true
-
+```
 In this case, we have a pattern template on Source. And it is of type Request. What this means is that multiple input files can be sent to Roslyn. And it's up to an external party to request a new source towards which to send each file. It has a Send pad which will emit a navigator over the completed PE, and another that will emit a navigator over the PDB.
 
 These both have pads that are created dynamically. But they're such that they produce compatible results. The filesrc can produce navigators over many binary files. And Roslyn can accept navigators over many binary files. How does one connect to the other? That's the job of the Bin they both live in. A Bin is reponsible for initiating linkage between two elements.
