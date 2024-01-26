@@ -160,6 +160,7 @@ So in this case they each have set of possible capabiltiies.
 
 + Element - Base class for every element in a pipeline.
 + Bin - Element that contains other elements. Elements within a Bin have a Name. Only elements within the same Bin can be connected.
++ Pipeline - Bin element that cannot have a further parent. Basically the entire pipeline. This is what you create, and the thing you signal to RUN.
 + Pad - Input or Output of data
 + SinkPad - from the POV of the element, where data is received.
 + SendPad - from the stand point of the element, where data is sent.
