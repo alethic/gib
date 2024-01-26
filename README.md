@@ -70,7 +70,49 @@ Okay. So the idea here is we build a pipeline with three elements, with names. N
 
 Within this .spec file, there are names: 'source', 'compile' and 'link'. Names given to instances of elements. Let's call that a naming context.
 
-And this spec file format lets you connect pads together using expressions that have those names available. $source, for instance, is a reference to the element with the name 'source' in the current naming context.
+And this spec file format lets you connect pads together using expressions that have those names available. $source, for instance, is a reference to the element with the name 'source' in the current naming context. The specifics of the format need more thinking.
+
+But let's think about what this spec file IS. It's not some permanent magic format hard coded into gib. Instead, what it's going to be, is a specific text format accepted by a specific element named specbin. At runtime specbin is responsible for reading the text and creating it's child graph. What this means is that if there is a desire for other formats, somebody could write their own element to handle it.
+
+So, imagine you were GitHub, and you wanted to turn your existing workflow YAML into a gib pipeline. You could have a ghabin element, which read that yaml, and generated a child graph representing all your tasks. Imagine you were MS, and wanted to convert MSBuild project files into a pipeline... you could technically implement a msbuildbin that read MSBuild XML files, and turned those into a pipeline. Or event just fired up MSBuild internally. Though I wouldn't recommend the latter: I'd rather the entire SDK be rewritten in a native gib format. The possibility to do both or neither means the ecosystem can evolve over time.
+
+Okay, so, specbin.... it should be able to download specs from remote services too. In this way, you could nest specbin's inside specbins.
+
+```
+dotnet: specbin
+  url: http://www.microsoft.com/dotnet/sdk/v1/sdk.spec
+```
+
+So imagine this. The ENTIRE .NET SDK ends up rebuilt as a spec file and MS serves it at a URL. Maybe internally referencing out to other spec files (the same way it composed like 200 different props and targets files). But, in this case, the user is creating his own specbin, loading a spec file from a remote URL, and thus assembling that entire build system for himself. specbin itself has a pad that accepts a URL to the specfile.
+
+So, okay... imagine how the command line works. It's basically assembling the first and only element in a pipeline, an implicit specbin:
+
+`gib run Foo.spec`: assembles a 1 element pipeline consisting of specbin with url set to Foo.spec. specbin then goes and downloads the URL and forms the rest of the pipeline.
+
+Now lets imagine some more interesting, complicated things:
+
+```
+dotnet: specbin
+  url: http://www.microsoft.com/dotnet/sdk/v1/sdk.spec
+
+java: specbin
+  url: http://www.openjdk.org/jdk/21.spec
+```
+
+In this case, we fire up two specbin elements, but with different urls. They're disconnected, they don't pass data to each other. But they would run simultaniously. And they COULD be connceted to each other. So imagine the spec for .NET had some some pads on the end accepting input. And the Java spec had some pads that emitted some output. And then you could connect them together. Perhaps feeding compiled .jar files into .NET builds as embedded resources. Or, running them through ikvm's specbin first, to transpile them to .NET assemblies. Interesting.
+
+The graph needs to be completely available at runtime... So these naming contexts are like a construct that can be navigated with an API, within the code for an element, it should be able to step up and see elements that are hooked to it. And it should be able to see elements of bins it itself includes. And this requires a careful execution model. Probably single threaded.
+
+I want to get rid of everything that's like a 'variable'. So no exact analogous to Properties in MSBuild, or ItemGroups. Instead, properties are text values provided to a pad. They can change, and the elements would be expected to react to those changes. Every property an element makes use of should just be a pad accepting a value. And then we need some expressive logic for connecting large swaths of pad. For instance, say you have a roslyn element, that conducts a build of source files. It needs a lot of settings. In MSBuild you'd write a class with a lot of properties. One for each property, and one for each itemgroup. I'd imagine the CSharp bindings would be the same, with each property representing a pad. So it's up to the user of the csharp element to connect the appropriate data to each property. The csharp element can for instance, change the properties of it's Roslyn workspace in response to those property changes. Or it can just reinitialize the whole thing if it wants to be inefficient. That's a detail to be worked out by the element.
+
+I showed above a model that runs a shell script, creating temp files. This isn't unlike the traditional target/temp file thing. But keep in mind, we need pads to be able to communicate more than just file names. There needs to be some sort of format specification. And the potential for notification. For instance, you can't connect a pad that emits text to a pad that accepts binary data. With that in mind, the format can be arbitrary in some way. Up to the elements to figure out between them. For instance, a clang element could accept C files.... but it doesn't need to accept PATHs to C files. It could accept the text contents itself. Or an AST. And it doesn't need to write to .o files. It could emit object file binary data directly. And change notifications thereof. It could even be broken apart, into emitting different data feeds for different sections of a .o file. And the linker element doesn't need to accept .o files. It could accept those detailed sections. The thing could be as fine grained as needed, or as course grained as needed.
+
+For instance, the current Roslyn code base can work directly against C# syntax tree structures. It can also parse C# into those trees. There's nothing mandating that this be a single element. It could be multiple elements: one parsing text, and watching for text changes, and emitting a changing AST; and the other receiving a changing AST and emitting ECMA335 metadata..... and it doesn't have to emit actual DLLs. It could emit ECMA335 table and row data, and be fed into a third component that integrates that table/row data into a final PE. And it doesn't need to build a full PE either, it could emit PE sections, which are then assembled into a final PE by a fourth component. Breaking it down this far would allow interesting reuse: the F# compiler could emit ECMA335 table/row structures. And then C# and F# could share the same ECMA335 assembler. And IKVM could share it as well. Even more interesting: there's the possibility that a PE component could throw out events about the final PE file, including which bytes in it are being updated to what. Then the filesink component could UPDATE the existing file, instead of rewriting it each time.
+
+And anybody participating in this pipeline should be able to drill into it, and grab a tee to a pad's output, and fork it elsewhere. For instance, the entire .NET SDK pipeline could be running..... hosted by Visual Studio. Which intercepts the output of a few well known element pads to see ECMA335 metadata table changes, and it could use that feed for intellisense. Error messages could be sent to pads, and fed to other elements. Or intercepted by an IDE to show the error window. So, the VS integration could be a element that wraps the specbin, firing up the user's project, and then hooking into the csharp elements inside the SDK, and receiving data from them.
+
+Probably some sort of restriction about elements only being able to access other elements inside their own naming context. So, for instance, for VS to be able to dig into the pipeline, it would have to spawn the pipeline with it's own element wrapper, so that element wrapper gave it a foothold into the top of the pipeline, and it could drill down. But, you wouldn't want elements deep in the pipeline to reach up to their parents and change things.
+
 
 
 
