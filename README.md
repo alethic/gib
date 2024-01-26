@@ -113,9 +113,45 @@ And anybody participating in this pipeline should be able to drill into it, and 
 
 Probably some sort of restriction about elements only being able to access other elements inside their own naming context. So, for instance, for VS to be able to dig into the pipeline, it would have to spawn the pipeline with it's own element wrapper, so that element wrapper gave it a foothold into the top of the pipeline, and it could drill down. But, you wouldn't want elements deep in the pipeline to reach up to their parents and change things.
 
+Next interesting idea: solution files. In MSBuild we have this concept of a .sln file. Which is ultimately some old VS style format file, which gets turned into a MSBuild file. Which has targets that call the other project files targets. This sounds to me like an element that loads up multiple other spec files into a single pipeline, and runs them all simultaniously. Perhaps connecting pads from one to the others to represent dependencies. That's a multiple project solution... just one pipeline with multiple complete sub pipelines of the .NET SDK running. Maybe specbin supports that natively. Maybe it's a special thing. Actually, it being a special thing sounds cooler.
+
+```
+projects: filesrc
+  glob: **/*.gib
+
+solution: multispec
+  repeat: $projects
+  template:
+    ${file.name}: spec
+      url: ${file.path}
+```
+
+So, in this case, we use a filesrc to glob the items into an output stream. Then a multispec element. The idea here is that multispec fires up a nested specbin element per item on the repeat pad. The text fed into each specbin is the result of the template applied to each item. So, here was have a way for a top-level makefile to include the contents of down level make files. Important to note, this isn't forking processes... it's just an outer element that spawns up inner elements dynamically, where those inner elements are themselves specbins capable of handling a spec file. This whole template thing is kind of complicated... but nothing stops somebody from writing yet another element easymultispecbin, which avoids the templating, and just knows exactly what the template is going to look like, and fires up multispecbin with the hard coded template text.
+
+Okay, next cool idea this might enable.
+
+Back in the day we would show off our Unix skills by doing stupid stuff, like taking our PS2 mouse input from a /dev/psm0, piping it through netcat to a remote machine, and into a named pipe. And then attaching X to that pipe. And we'd move one mouse on one computer, and see the cursor move on the other, and rave about how awesome and flexible Unix was. Why can't we do that with builds? Distributed builds are a thing. But they are incredibly complex.
+
+We could write an element that listens to data.... and serializes it across the network, to a copy of gib running on another machine, running another pipeline with the rest of the graph. Or, to a farm that can fire up such pipelines. Obviously this isn't just magically running random elements on the network. Though I guess that could be done... a wrapping element which modifies the child element graph to insert a networksrc and networksink element around each other element, all configured to route traffic to some other remote pipeline, where the real element is fired up. But that's kind stupid. In reality, you'd want to fork specific parts of a pipeline. For instance, there's a case for C builds to in fact fork every 'sh' for the C compiler to a different machine. And every ld invocation. But, in C#, this isn't really a useful thing. Instead we really break our units of work up into assemblies, which are indepent projects. So it probably would make sense to do it at that boundary: multispecbin instead could fire up the pipeline on a farm of remote machines. Each project then runs on a different node.
 
 
 
+#Blah
 
+Okay. So what do we need.
 
+A basic Pipeline concept. A Pipeline is a graph of Elements and Connections. Elements have Pads. Connections can be made between Pads. Elements have code that runs. At a predictable time and order. The code can modify the element itself. Elements can subscribe to data on Pads. Pads have a directionality. Source pads can raise events that data is available. Output pads can have data placed on them. Elements need to be able to subscribe to events on Source pads. No async stuff. Just callbacks. It's up to each element to introduce internal async operation if it desires, using it's preferred threading model, etc. Events on pads need to be SHORT. Usually just passing references. Like a media pipeline, we don't copy buffers. We pass handles to buffers. Some day we'll have to think about memory management around that. Maybe some Handle model, where you can manually release them when you're done. I dunno.
 
+I do think this thing should be completely single threaded, with a predictable execution model. I expect elements to be programmed in a variety of languages. I expect a future .NET SDK to be built in CSharp. And a Java SDK built in Java. etc. I also think there's some benefit for gib itself being incredibly simple. In fact, I would say gib eventually be rewritten in some popular open language that has viral status: Rust. But for now, I'm going to prototype in C# since that's my jam.
+
+What is a nested pipeline? So you're writing an element, and want to spawn child elements. I guess that's a new Pipeline instance. A Pipeline is implicitely a naming context? An element can't add new elements to it's own Pipeline. But it can create child Pipelines with whatever elements it wants. There will probably be a lot of instances of people creating wrapping elements just so they have a place to construct their own nested Pipelines. But that's fine. What about routing from source pads on a wrapping element to source pads on a nested element? There's no sink pad involved here, it's just source to source. Routing, not Connecting? Differnet terms?
+
+Data formats? Hmm. Should we just pass events with Handles to data? Or should we pass more? If we weren't worried about cross language integration, we'd just pass .NET objects. But we should be.... right? Maybe we just start with .NET objects. In that case, a binding would have to know wtf those objects were.
+
+There would have to be some agreed upon conventions obviously. What is a file? Is it a structure that contains file information? Is it the file contents itself, and a structure that specifies a file? Is it a stream object of some kind? Or a linked list of bytes? Or maybe all of the above. Maybe we can offer pads with a lot of different capabilities. Maybe negotiation does matter. If we're thinking outside pure .NET objects.... this gets hard. We want to expose rich structure in the event data. But we don't want to impose limitations, or odd language-specific requirements. Maybe just structures, or interface lists, in an abstract format? Similar to COM or something. Where there's some ABI thing everybody agrees to that has the basic idea of accepting an object, an object having a set of properties, properties having some primitive data types. What about passing file chunks... blobs?
+
+Remember that elements can be written to convert. A converter element with one source and one sink. And maybe a converterbin of some kind, that can negotiate the available formats on each side. But then we need a format description language of some kind. Maybe just simple format documents of some kind... gstreamer has some sort of caps system (capabilities). 
+
+from gstream docs: Pads can be linked when the caps of both pads are compatible. This is the case when their intersection is not empty.
+
+So in this case they each have set of possible capabiltiies. 
