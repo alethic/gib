@@ -258,3 +258,64 @@ Each Element has an InheritedState. This is configured by the bin that holds the
 Each Element has an ActualDesiredState. This is a combination of the DesiredState and InheritedState.
 
 When ActualDesiredState is changed, a method on the element is invoked. This method, upon completion, can set the State when it was successful.
+
+
+## thoughts on what we're passing around
+
+Watching Files
+	Files are seekable streams, with metadata.
+	Need to be able to navigate? Yes.
+	Notification of range updates.
+	Notification of metadata updates.
+
+Roslyn Output
+	A PE and a PDB
+		These are kinda just files that don't exist.
+	ECMA335 Tables/Heaps
+		Complex structures.
+		Can move around in them request row information, request blob/string/us/guid information.
+		We do want to be notified upon structural changes
+			new row
+			deleted row
+			changing row values (token, columns)
+			new heap object
+			deleted heap object
+
+Text files
+	Character ranges.
+	Need to be able to navigate? Yes.
+	Notification of range updates.... but ranges are characters.
+	Notification of metadata updates.
+		Ability to map to original byte stream? Maybe.
+
+Simple Properties
+	Some sort of type system. Strings, ints. Maybe we formalize around JSON for this?
+
+
+ItemGroups
+	Could be an observable collection of some kind.
+	Richness of object?
+		Typed metadata?
+
+
+Too much variation.
+
+
+
+Pads are going to need to only return an arbitrary callback-enabled interface.
+	May be any interface a user can dream up.
+	May be a rebuildable graph
+	May be a buffer signal thing.
+	May be a richer table/heap interface.
+
+	** theres no way to abstract this to a simple protocol **
+
+	Something COM-like. Some sort of formal ABI.
+
+	GObject?!?!?! Vala?!?!?!?
+
+
+Pads then just exist to name an input/output, and provide a surface by which to negotiate something. What are we negotiating though? Not mime/types. We're not negotiating a stream.
+
+The actual value delivered is some sort of Object that supports change. Which may be some sort of buffer thing.
+
