@@ -203,7 +203,7 @@ Pads:
       range-events: true
     gib/binary-navigator:
       range-events: false
-    ```
+```
 
 The idea here is that the Pad takes a single input, which is of type text/plain, and will be parsed as a glob expression. It exposes a dynamic send pad, with a template name that indicates how dynamically created pads will look. It can emit two types of stream formats for these items. binary-stream indicates that it receive a handle to something that acts as a read-only forward-only Stream. It has an attribute set that it's seekable. So, the pad can basical provides a Stream. The receiving element can navigate that stream forward only as it pleases. The second option is a binary-event-stream. This is a bit more special, because it indicates the receiving element gets a handle to a EventStream, or something. Which also supports raising events. So, it can notify of file changes.
 
@@ -212,6 +212,7 @@ The second cap may only be offered if running on operating systems that support 
 The fact that it's a Dynamic pad though because that at runtime, once the pipeline is Running, actual pads will be added conforming to the template. One for each discovered file. There may be thousands of pads added at runtime. But that's okay. Pads are supposed to be like ItemGroups and Properties. And we often have large collections of items in ItemGroups.
 
 Now imagine a Roslyn element. The idea of a Roslyn element would be that it accepts a list of C# files, and outputs a single executable. And optionally PDB.
+
 ```
 Pads:
 
@@ -235,6 +236,7 @@ Pads:
     gib/binary-navigator:
       range-events: true
 ```
+
 In this case, we have a pattern template on Source. And it is of type Request. What this means is that multiple input files can be sent to Roslyn. And it's up to an external party to request a new source towards which to send each file. It has a Send pad which will emit a navigator over the completed PE, and another that will emit a navigator over the PDB.
 
 These both have pads that are created dynamically. But they're such that they produce compatible results. The filesrc can produce navigators over many binary files. And Roslyn can accept navigators over many binary files. How does one connect to the other? That's the job of the Bin they both live in. A Bin is reponsible for initiating linkage between two elements.
