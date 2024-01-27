@@ -1,0 +1,32 @@
+<Project>
+    <PropertyGroup>
+        <LangVersion Condition=" '$(LangVersion)' == '' ">10.0</LangVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Authors Include="Jerome Haltom" />
+    </ItemGroup>
+
+    <PropertyGroup Label="Copyright Info">
+        <ProductName>Gib</ProductName>
+        <Authors>@(Authors, ',')</Authors>
+        <CurrentYear Condition=" '$(CurrentYear)' == '' ">$([System.DateTime]::UtcNow.Year.ToString())</CurrentYear>
+        <Copyright>Copyright © $(CurrentYear) @(Authors, ', ')</Copyright>
+    </PropertyGroup>
+
+    <PropertyGroup Label="Version Info">
+        <DefaultMajorVersion>0</DefaultMajorVersion>
+        <Version Condition=" '$(Version)' == '' ">$(DefaultMajorVersion).0.0-dev</Version>
+        <AssemblyVersion Condition=" '$(AssemblyVersion)' == '' ">$(DefaultMajorVersion).0.0.0</AssemblyVersion>
+        <FileVersion Condition=" '$(FileVersion)' == '' ">$(DefaultMajorVersion).0.0.0</FileVersion>
+        <InformationalVersion Condition=" '$(InformationalVersion)' == '' ">$(DefaultMajorVersion).0.0.0</InformationalVersion>
+    </PropertyGroup>
+
+    <PropertyGroup Label="Package Info">
+        <RepositoryUrl Condition=" '$(RepositoryUrl)' == '' ">https://github.com/alethic/gib.git</RepositoryUrl>
+        <RepositoryType Condition=" '$(RepositoryType)' == '' ">git</RepositoryType>
+        <PackageProjectUrl  Condition=" '$(PackageProjectUrl)' == '' ">https://github.com/alethic/gib</PackageProjectUrl>
+        <PackageVersion Condition=" '$(PackageVersion)' == '' ">$(Version)</PackageVersion>
+    </PropertyGroup>
+
+</Project>

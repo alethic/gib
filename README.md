@@ -247,3 +247,14 @@ The Bin is reponsible for linking and the negotiation process. Different Bins mi
 
 
 
+## State
+
+Each Element is in a State. This is either Stopped or Running.
+
+Each Element has a DesiredState. This is configurable by the user.
+
+Each Element has an InheritedState. This is configured by the bin that holds the element.
+
+Each Element has an ActualDesiredState. This is a combination of the DesiredState and InheritedState.
+
+When ActualDesiredState is changed, a method on the element is invoked. This method, upon completion, can set the State when it was successful.
