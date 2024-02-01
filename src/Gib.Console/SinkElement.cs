@@ -1,12 +1,12 @@
-﻿using Gib.Core;
+﻿using Gip.Core;
 
-namespace Gib.Console
+namespace Gip.Console
 {
 
     public class SinkElement : GibElement
     {
 
-        protected override bool TryChangeState(GibElementState state)
+        protected override bool TryChangeState(GibState state)
         {
             return true;
         }

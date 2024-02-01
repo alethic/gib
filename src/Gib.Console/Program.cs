@@ -1,6 +1,6 @@
-﻿using Gib.Core;
+﻿using Gip.Core;
 
-namespace Gib.Console
+namespace Gip.Console
 {
 
     public static class Program
@@ -10,11 +10,11 @@ namespace Gib.Console
         {
             var pipeline = new GibPipeline();
             var e1 = new SendElement();
-            pipeline.Add(e1);
+            pipeline.AddElement(e1);
             var e2 = new SinkElement();
-            pipeline.Add(e2);
-            pipeline.TrySetTargetState(GibElementState.Ready);
-            pipeline.TrySetTargetState(GibElementState.Running);
+            pipeline.AddElement(e2);
+            pipeline.TrySetTargetState(GibState.Ready);
+            pipeline.TrySetTargetState(GibState.Running);
         }
 
     }
