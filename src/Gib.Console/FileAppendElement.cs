@@ -3,13 +3,13 @@
 namespace Gip.Console
 {
 
-    public class FileAppendElementFactory : GibElementFactory
+    public class FileAppendElementFactory : GipElementFactory
     {
 
         /// <summary>
         /// Template for pads that receive input files.
         /// </summary>
-        public static readonly GibSinkPadTemplate SrcTemplate = new GibSinkPadTemplate("src_%d", GibPadPresence.Dynamic, Array.Empty<GibCap>());
+        public static readonly GipSinkPadTemplate SrcTemplate = new GipSinkPadTemplate("src_%d", GipPadPresence.Dynamic, Array.Empty<GipCap>());
 
         /// <summary>
         /// Initializes a new instance.
@@ -20,7 +20,7 @@ namespace Gip.Console
         }
 
         /// <inheritdoc />
-        public override GibElement Create()
+        public override GipElement Create()
         {
             return new FileAppendElement(this);
         }
@@ -30,13 +30,13 @@ namespace Gip.Console
     /// <summary>
     /// Generates a single file one the output that consists of the appended contents of the files on the input.
     /// </summary>
-    public class FileAppendElement : GibElement
+    public class FileAppendElement : GipElement
     {
 
         /// <summary>
         /// Initializes a new instance.
         /// </summary>
-        public FileAppendElement(GibElementFactory factory) :
+        public FileAppendElement(GipElementFactory factory) :
             base(factory)
         {
 
@@ -49,9 +49,10 @@ namespace Gip.Console
         /// <param name="name"></param>
         /// <param name="caps"></param>
         /// <returns></returns>
-        internal override GibSinkPad RequestPad(GibSinkPadTemplate template, string name, GibCap[] caps)
+        internal override GipSinkPad RequestPadCore(GipSinkPadTemplate template, string name, GipCapList caps)
         {
-            var pad = template.Create(this, name);
+            var pad = template.Create();
+            pad.Name = name;
             pad.UserState = new FileAppendInputContext();
             AddPad(pad);
             return pad;
@@ -61,13 +62,13 @@ namespace Gip.Console
         /// 
         /// </summary>
         /// <param name="pad"></param>
-        public override void ReleaseSinkPad(GibSinkPad pad)
+        public override void ReleaseSinkPad(GipSinkPad pad)
         {
             pad.UserState = null;
             RemovePad(pad);
         }
 
-        protected override bool TryChangeState(GibState state)
+        protected override bool TryChangeState(GipState state)
         {
 
         }

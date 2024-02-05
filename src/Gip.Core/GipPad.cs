@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Gip.Core
+﻿namespace Gip.Core
 {
 
     /// <summary>
@@ -8,9 +6,9 @@ namespace Gip.Core
     /// </summary>
     /// <typeparam name="TTemplate"></typeparam>
     /// <typeparam name="TPeer"></typeparam>
-    public abstract class GipPad<TTemplate, TPeer> : GibPad
+    public abstract class GipPad<TTemplate, TPeer> : GipPad
         where TTemplate : GipPadTemplate
-        where TPeer : GibPad
+        where TPeer : GipPad
     {
 
         /// <summary>
@@ -41,7 +39,7 @@ namespace Gip.Core
         }
 
         /// <inheritdoc />
-        protected override void SetPeer(GibPad? peer)
+        protected override void SetPeer(GipPad? peer)
         {
             if (peer is not null and not TPeer)
                 throw new GipException($"Peer of {GetType().Name} can only be a {typeof(TPeer).Name}.");
@@ -54,7 +52,7 @@ namespace Gip.Core
     /// <summary>
     /// Represents a connection point on a <see cref="GipElement"/>.
     /// </summary>
-    public abstract class GibPad : GipObject
+    public abstract class GipPad : GipObject<GipElement>
     {
 
         /// <summary>
@@ -88,8 +86,8 @@ namespace Gip.Core
         /// <returns></returns>
         static bool CheckLinkHierarchy(GipSendPad sendPad, GipSinkPad sinkPad)
         {
-            var sendElement = sendPad.Element;
-            var sinkElement = sinkPad.Element;
+            var sendElement = sendPad.Parent;
+            var sinkElement = sinkPad.Parent;
 
             // if one of the pads has no hierarchy we allow the link
             if (sendElement == null || sinkElement == null)
@@ -100,8 +98,8 @@ namespace Gip.Core
                 return false;
 
             // if they both have a parent, we check the grandparents
-            var sendBin = (GipBin?)sendElement?.Parent;
-            var sinkBin = (GipBin?)sinkElement?.Parent;
+            var sendBin = sendElement?.Parent;
+            var sinkBin = sinkElement?.Parent;
             if (sendBin != sinkBin)
                 return false;
 
@@ -125,8 +123,8 @@ namespace Gip.Core
             {
                 lock (sinkPad)
                 {
-                    GipCap[]? sendCaps = null;
-                    GipCap[]? sinkCaps = null;
+                    GipCapList? sendCaps = null;
+                    GipCapList? sinkCaps = null;
 
                     // expensive caps checking takes priority over only checking template caps
                     if ((flags & GipPadLinkFlags.CheckCaps) != 0)
@@ -145,13 +143,13 @@ namespace Gip.Core
                     }
 
                     // if either pad is missing caps there is no possible intersection
-                    if (sendCaps == null || sendCaps.Length == 0)
+                    if (sendCaps == null || sendCaps.Count == 0)
                         return false;
-                    if (sinkCaps == null || sinkCaps.Length == 0)
+                    if (sinkCaps == null || sinkCaps.Count == 0)
                         return false;
 
                     // check if resulting caps can intersect
-                    return GipCap.CanIntersect(sendCaps, sinkCaps);
+                    return GipCapList.CanIntersect(sendCaps, sinkCaps);
                 }
             }
         }
@@ -223,19 +221,19 @@ namespace Gip.Core
                     sinkPad.Peer = sendPad;
 
                     // pads have a custom link function
-                    var sendFunc = sendPad.GetLinkFunc();
-                    var sinkFunc = sinkPad.GetLinkFunc();
+                    var sendFunc = sendPad.LinkFunc;
+                    var sinkFunc = sinkPad.LinkFunc;
                     if (sendFunc != null || sinkFunc != null)
                     {
                         if (sendFunc != null)
                         {
-                            if (sendPad.Element != null)
-                                r = sendFunc(sendPad, sinkPad, sendPad.Element);
+                            if (sendPad.Parent != null)
+                                r = sendFunc(sendPad, sinkPad, sendPad.Parent);
                         }
                         else if (sinkFunc != null)
                         {
-                            if (sinkPad.Element != null)
-                                r = sinkFunc(sinkPad, sendPad, sinkPad.Element);
+                            if (sinkPad.Parent != null)
+                                r = sinkFunc(sinkPad, sendPad, sinkPad.Parent);
                         }
 
                         // check if the same pads are linked still
@@ -275,8 +273,8 @@ namespace Gip.Core
         GipPadTemplate template;
         GipPadActivateFuncDelegate activateFunc;
         GipPadFlags flags;
-        GibPad? peer;
-        GipCap[]? caps;
+        GipPad? peer;
+        GipCapList? caps;
         GipPadMode mode;
         object? userState;
 
@@ -284,50 +282,16 @@ namespace Gip.Core
         /// Initializes a new instance.
         /// </summary>
         /// <param name="template"></param>
-        protected internal GibPad(GipPadTemplate template)
+        protected internal GipPad(GipPadTemplate template)
         {
             this.template = template;
             this.activateFunc = DefaultActivateFunc;
         }
 
-        /// <inheritdoc />
-        protected override void OnPropertyChanged(string name, object? oldValue, object? newValue)
-        {
-            base.OnPropertyChanged(name, oldValue, newValue);
-
-            switch (name)
-            {
-                case nameof(Parent):
-                    OnPropertyChanged(nameof(Element), oldValue, newValue);
-                    break;
-            }
-        }
-
-        /// <inheritdoc />
-        protected override void SetParent(GipObject? parent)
-        {
-            if (parent is not null and not GipElement)
-                throw new GipException($"Parent of {GetType().Name} can only be a {typeof(GipElement).Name}.");
-
-            base.SetParent(parent);
-        }
-
-        /// <summary>
-        /// Gets the parent bin of this element.
-        /// </summary>
-        public GipElement? Element
-        {
-            get => (GipElement?)Parent;
-            internal set => Parent = value;
-        }
-
         /// <summary>
         /// Gets the template of this pad.
         /// </summary>
-        public virtual GipPadTemplate Template
-        {
-            get => template;
-        }
+        public GipPadTemplate Template => template;
 
         /// <summary>
         /// Sets the specified flags. This method is not synchronzied.
@@ -350,9 +314,9 @@ namespace Gip.Core
         /// <summary>
         /// Gets or sets the peer of this pad.
         /// </summary>
-        public virtual GibPad? Peer
+        public virtual GipPad? Peer
         {
-            get { lock (this) { return peer; } }
+            get { using (Lock()) { return peer; } }
             internal set { SetPeer(value); }
         }
 
@@ -360,7 +324,7 @@ namespace Gip.Core
         /// Sets the peer of this pad.
         /// </summary>
         /// <param name="peer"></param>
-        protected virtual void SetPeer(GibPad? peer)
+        protected virtual void SetPeer(GipPad? peer)
         {
             SetPropertyValue(nameof(Peer), ref peer, peer);
         }
@@ -370,7 +334,7 @@ namespace Gip.Core
         /// </summary>
         public GipPadMode Mode
         {
-            get { lock (this) { return mode; } }
+            get { using (Lock()) { return mode; } }
             set { SetMode(value); }
         }
 
@@ -386,41 +350,38 @@ namespace Gip.Core
         /// <summary>
         /// Gets the negotiated caps of the pad.
         /// </summary>
-        public GipCap[]? Caps => caps;
+        public GipCapList? Caps => caps;
 
         /// <summary>
         /// Gets the set of caps on this pad which should be queryable.
         /// </summary>
         /// <returns></returns>
-        GipCap[] GetQueryableCaps()
+        GipCapList GetQueryableCaps()
         {
-            lock (this)
+            var isFixed = (flags & GipPadFlags.Fixed) != 0;
+
+            // fixed caps, try the negotiated caps first
+            if (isFixed)
             {
-                var isFixed = (flags & GipPadFlags.Fixed) != 0;
+                var caps = Caps;
+                if (caps != null)
+                    return caps;
+            }
 
-                // fixed caps, try the negotiated caps first
-                if (isFixed)
-                {
-                    var caps = Caps;
-                    if (caps != null)
-                        return caps;
-                }
+            // next, check the template caps
+            if (Template != null && Template.Caps != null)
+                return Template.Caps;
 
-                // next, check the template caps
-                if (Template != null && Template.Caps != null)
-                    return Template.Caps;
-
-                // template had no caps, and we are not fixed
-                if (isFixed == false)
-                {
-                    var caps = Caps;
-                    if (caps != null)
-                        return caps;
-                }
+            // template had no caps, and we are not fixed
+            if (isFixed == false)
+            {
+                var caps = Caps;
+                if (caps != null)
+                    return caps;
             }
 
             // this almost never happens
-            return GipCap.Any;
+            return GipCapList.Any;
         }
 
         /// <summary>
@@ -428,13 +389,14 @@ namespace Gip.Core
         /// </summary>
         /// <param name="filter"></param>
         /// <returns></returns>
-        public virtual GipCap[] QueryCaps(GipCap[]? filter)
+        public virtual GipCapList QueryCaps(GipCapList? filter)
         {
-            var caps = GetQueryableCaps();
+            using var _ = Lock();
 
-            // apply filter if present
+            // get queryable caps and filter if required
+            var caps = GetQueryableCaps();
             if (filter != null)
-                caps = GipCap.Intersect(filter, caps, GipCapIntersectMode.First);
+                caps = GipCapList.Intersect(filter, caps, GipCapIntersectMode.First);
 
             return caps;
         }
@@ -447,18 +409,13 @@ namespace Gip.Core
         }
 
         /// <summary>
-        /// Raised when a link event occurs on the pad.
-        /// </summary>
-        public event EventHandler<GipPadLinkEventArgs>? LinkEvent;
-
-        /// <summary>
         /// Invoke to raise a link event on the pad.
         /// </summary>
         /// <param name="eventType"></param>
         /// <param name="peer"></param>
-        internal void OnLinkEvent(GipPadLinkEventType eventType, GibPad? peer)
+        internal void OnLinkEvent(GipPadLinkEventType eventType, GipPad? peer)
         {
-            LinkEvent?.Invoke(this, new GipPadLinkEventArgs(this, eventType, peer));
+            RaiseEvent(new GipPadLinkEventArgs(this, eventType, peer));
         }
 
         /// <summary>
@@ -489,23 +446,17 @@ namespace Gip.Core
         /// Activates or deactivates the given pad.
         /// </summary>
         /// <param name="active"></param>
-        /// <exception cref="NotImplementedException"></exception>
         internal bool SetActive(bool active)
         {
-            GipPadMode old;
-            GipElement? parent;
+            using var _ = Lock();
 
-            lock (this)
-            {
-                old = mode;
-                parent = Element;
-                if (parent == null)
-                    return false;
-            }
+            // unparented pads cannot have their activity changed
+            if (Parent == null)
+                return false;
 
             if (active)
             {
-                if (old == GipPadMode.None)
+                if (mode == GipPadMode.None)
                 {
                     return ActivateFunc();
                 }
@@ -516,13 +467,13 @@ namespace Gip.Core
             }
             else
             {
-                if (old == GipPadMode.None)
+                if (mode == GipPadMode.None)
                 {
                     return true;
                 }
                 else
                 {
-                    return ActivateModeInternal(old, false);
+                    return ActivateModeInternal(mode, false);
                 }
             }
         }

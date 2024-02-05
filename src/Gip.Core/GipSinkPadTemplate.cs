@@ -13,7 +13,7 @@
         /// <param name="name"></param>
         /// <param name="presence"></param>
         /// <param name="caps"></param>
-        public GipSinkPadTemplate(string name, GipPadPresence presence, GipCap[] caps) :
+        public GipSinkPadTemplate(string name, GipPadPresence presence, GipCapList caps) :
             base(name, presence, caps)
         {
 

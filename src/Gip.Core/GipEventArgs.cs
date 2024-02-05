@@ -9,21 +9,21 @@ namespace Gip.Core
     public abstract class GipEventArgs : EventArgs
     {
 
-        readonly GipObject sender;
+        readonly GipObject target;
 
         /// <summary>
         /// Initializes a new instance.
         /// </summary>
-        /// <param name="sender"></param>
-        protected GipEventArgs(GipObject sender)
+        /// <param name="target"></param>
+        protected GipEventArgs(GipObject target)
         {
-            this.sender = sender;
+            this.target = target;
         }
 
         /// <summary>
         /// Gets the target of the event.
         /// </summary>
-        public GipObject Target => sender;
+        public GipObject Target => target;
 
     }
 

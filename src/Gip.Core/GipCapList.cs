@@ -20,7 +20,7 @@ namespace Gip.Core
         /// <summary>
         /// Set of caps with a single cap accepting anything.
         /// </summary>
-        public static readonly GipCapList Any = new GipCapList([new GipCap(null, GipConstraintList.Empty, [])]);
+        public static readonly GipCapList Any = new GipCapList([new GipCap(null, GipConstraintList.Empty, GipCapFeatureList.Empty)]);
 
         /// <summary>
         /// Returns <c>true</c> if the two <see cref="GipCapList"/>s can intersect.
@@ -42,11 +42,11 @@ namespace Gip.Core
                 return false;
 
             // send caps contains an any entry (no type restriction)
-            if (caps1.Any(i => i.Type == null && i.Features.Length == 0))
+            if (caps1.Any(i => i.Type == null && i.Features.Count == 0))
                 return true;
 
             // sink caps contains an any entry (no type restriction)
-            if (caps2.Any(i => i.Type == null && i.Features.Length == 0))
+            if (caps2.Any(i => i.Type == null && i.Features.Count == 0))
                 return true;
 
             for (var i = 0; i < len1 + len2 - 1; i++)
@@ -65,7 +65,7 @@ namespace Gip.Core
                     var cap2 = caps2[k];
 
                     // features must all be equals, and compared caps must intersect
-                    if (GipCapFeature.Equals(caps1[j].Features, caps2[k].Features) && GipCap.CanIntersect(cap1, cap2))
+                    if (GipCapFeature.Equals(caps1[j].Features, caps2[k].Features) && cap1.CanIntersect(cap2))
                         return true;
 
                     /* move down left */
@@ -100,11 +100,11 @@ namespace Gip.Core
                 return Empty;
 
             // first caps contains an any entry (no type restriction)
-            if (caps1.Any(i => i.Type == null && i.Features.Length == 0))
+            if (caps1.Any(i => i.Type == null && i.Features.Count == 0))
                 return caps2;
 
             // second caps contains an any entry (no type restriction)
-            if (caps2.Any(i => i.Type == null && i.Features.Length == 0))
+            if (caps2.Any(i => i.Type == null && i.Features.Count == 0))
                 return caps1;
 
             return mode switch
@@ -168,7 +168,7 @@ namespace Gip.Core
                         var iconstraints = GipConstraint.Intersect(caps1[j].Constraints, caps2[k].Constraints);
                         if (iconstraints.Count > 0)
                         {
-                            if (caps1[j].Features.Length == 0)
+                            if (caps1[j].Features.Count == 0)
                                 dest.Add(new GipCap(caps1[j].Type, iconstraints, caps2[k].Features));
                             else
                                 dest.Add(new GipCap(caps1[j].Type, iconstraints, caps1[j].Features));
@@ -225,15 +225,20 @@ namespace Gip.Core
         /// Fixed <see cref="GipCap"/> describe exactly one format, that is, they have exactly
         /// one type with one set of constraints, and each field in the constraint describes a fixed type.
         /// </summary>
+        public bool IsFixed => GetIsFixed();
+
+        /// <summary>
+        /// Implements the getter for IsFixed.
+        /// </summary>
         /// <returns></returns>
-        public bool IsFixed()
+        bool GetIsFixed()
         {
             if (Count != 1)
                 return false;
 
             // check that each of the constraints is fixed
             foreach (var cap in list)
-                if (cap.GetIsFixed() == false)
+                if (cap.IsFixed == false)
                     return false;
 
             return true;

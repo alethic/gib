@@ -31,7 +31,7 @@ namespace Gip.Core
 
             // all constraints must be fixed
             foreach (var constraint in Constraints)
-                if (constraint.GetIsFixed() == false)
+                if (constraint.IsFixed == false)
                     return false;
 
             return true;

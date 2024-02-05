@@ -9,11 +9,21 @@ namespace Gip.Core
     public class GipSinkPad : GipPad<GipSinkPadTemplate, GipSendPad>
     {
 
-        public delegate GipPadLinkResult LinkFunc(GipSinkPad sinkPad, GipSendPad sendPad, GipElement element);
-        public delegate bool ActivateFunc(GipSinkPad sinkPad, GipElement element);
+        public delegate GipPadLinkResult LinkFuncDelegate(GipSinkPad sinkPad, GipSendPad sendPad, GipElement element);
 
-        LinkFunc? linkFunc;
-        ActivateFunc? activateFunc;
+        /// <summary>
+        /// Default implementation for the link function of a sink pad.
+        /// </summary>
+        /// <param name="sinkpad"></param>
+        /// <param name="sendPad"></param>
+        /// <param name="element"></param>
+        /// <returns></returns>
+        static GipPadLinkResult DefaultLinkFunc(GipSinkPad sinkpad, GipSendPad sendPad, GipElement element)
+        {
+            throw new NotImplementedException();
+        }
+
+        LinkFuncDelegate linkFunc;
 
         /// <summary>
         /// Initializes a new instance.
@@ -22,18 +32,17 @@ namespace Gip.Core
         internal GipSinkPad(GipSinkPadTemplate template) :
             base(template)
         {
-
+            linkFunc = DefaultLinkFunc;
         }
 
         /// <summary>
-        /// Gets the custom linking function, if any.
+        /// Gets or sets the custom linking function, if any.
         /// </summary>
-        internal LinkFunc? GetLinkFunc() => linkFunc;
-
-        /// <summary>
-        /// Gets the custom linking function, if any.
-        /// </summary>
-        internal ActivateFunc? GetActivateFunc() => activateFunc;
+        public LinkFuncDelegate LinkFunc
+        {
+            get => linkFunc;
+            set => linkFunc = value;
+        }
 
         /// <summary>
         /// Implementation of <see cref="ActivateModeInternal"/> for <see cref="GipSendPad"/>.

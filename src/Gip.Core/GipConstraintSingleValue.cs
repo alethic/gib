@@ -24,6 +24,18 @@
         /// </summary>
         public T Value => value;
 
+        public override bool IsFixed => throw new System.NotImplementedException();
+
+        public override bool CanIntersect(object? other)
+        {
+            throw new System.NotImplementedException();
+        }
+
+        public override bool TryIntersect(object? other, out object? result)
+        {
+            throw new System.NotImplementedException();
+        }
+
     }
 
 }

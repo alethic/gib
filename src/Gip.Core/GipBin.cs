@@ -122,7 +122,7 @@ namespace Gip.Core
         /// <summary>
         /// Links the two pads of the source and destination elements.
         /// </summary>
-        public void Link(GibPad src, GibPad dst)
+        public void Link(GipPad src, GipPad dst)
         {
             lock (this)
             {
@@ -133,7 +133,7 @@ namespace Gip.Core
         /// <summary>
         /// Links the two pads of the source and destination elements.
         /// </summary>
-        public void Link(GibPad src, GibPad dst, GipCapList filter)
+        public void Link(GipPad src, GipPad dst, GipCapList filter)
         {
             lock (this)
             {

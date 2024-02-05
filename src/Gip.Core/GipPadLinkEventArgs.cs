@@ -1,23 +1,20 @@
-﻿using System;
-
-namespace Gip.Core
+﻿namespace Gip.Core
 {
 
     public class GipPadLinkEventArgs : GipPadEventArgs
     {
 
-        readonly GibPad pad;
         readonly GipPadLinkEventType eventType;
-        readonly GibPad? peer;
+        readonly GipPad? peer;
 
         /// <summary>
         /// Initializes a new instance.
         /// </summary>
         /// <param name="eventType"></param>
         /// <param name="peer"></param>
-        public GipPadLinkEventArgs(GibPad pad, GipPadLinkEventType eventType, GibPad? peer)
+        public GipPadLinkEventArgs(GipPad pad, GipPadLinkEventType eventType, GipPad? peer) :
+            base(pad)
         {
-            this.pad = pad ?? throw new ArgumentNullException(nameof(pad));
             this.eventType = eventType;
             this.peer = peer;
         }
@@ -25,7 +22,7 @@ namespace Gip.Core
         /// <summary>
         /// Gets the pad that raised this event.
         /// </summary>
-        public GibPad Pad => pad;
+        public new GipPad Target => (GipPad)base.Target;
 
         /// <summary>
         /// Gets the type of link event.
@@ -35,7 +32,7 @@ namespace Gip.Core
         /// <summary>
         /// Gets the peer related to this event.
         /// </summary>
-        public GibPad? Peer => peer;
+        public GipPad? Peer => peer;
 
     }
 

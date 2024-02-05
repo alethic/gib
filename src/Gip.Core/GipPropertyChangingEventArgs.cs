@@ -1,12 +1,10 @@
-﻿using System;
-
-namespace Gip.Core
+﻿namespace Gip.Core
 {
 
     /// <summary>
     /// Describes a property value being changed in a <see cref="GipObject"/>.
     /// </summary>
-    public class GipPropertyChangedEventArgs : GipPropertyChangedEventArgs<object>
+    public class GipPropertyChangingEventArgs : GipPropertyChangingEventArgs<object>
     {
 
         /// <summary>
@@ -16,7 +14,7 @@ namespace Gip.Core
         /// <param name="name"></param>
         /// <param name="oldValue"></param>
         /// <param name="newValue"></param>
-        public GipPropertyChangedEventArgs(GipObject sender, string name, object? oldValue, object? newValue) :
+        public GipPropertyChangingEventArgs(GipObject sender, string name, object? oldValue, object? newValue) :
             base(sender, name, oldValue, newValue)
         {
 
@@ -28,7 +26,7 @@ namespace Gip.Core
     /// Describes a property value being changed in a <see cref="GipObject"/>.
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public class GipPropertyChangedEventArgs<T> : GipEventArgs
+    public class GipPropertyChangingEventArgs<T> : GipEventArgs
     {
 
         readonly string name;
@@ -42,7 +40,7 @@ namespace Gip.Core
         /// <param name="name"></param>
         /// <param name="oldValue"></param>
         /// <param name="newValue"></param>
-        public GipPropertyChangedEventArgs(GipObject sender, string name, T? oldValue, T? newValue) :
+        public GipPropertyChangingEventArgs(GipObject sender, string name, T? oldValue, T? newValue) :
             base(sender)
         {
             this.name = name;

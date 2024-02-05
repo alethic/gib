@@ -1,26 +1,23 @@
-﻿using System;
-
-namespace Gip.Core
+﻿namespace Gip.Core
 {
 
-    public abstract class GipElementEventArgs : EventArgs
+    public abstract class GipElementEventArgs : GipEventArgs
     {
-
-        readonly GipElement element;
 
         /// <summary>
         /// Initializes a new instance.
         /// </summary>
         /// <param name="element"></param>
-        public GipElementEventArgs(GipElement element)
+        public GipElementEventArgs(GipElement element) :
+            base(element)
         {
-            this.element = element ?? throw new ArgumentNullException(nameof(element));
+
         }
 
         /// <summary>
         /// Gets the element that raised this event.
         /// </summary>
-        public GipElement Element => element;
+        public new GipElement Target => (GipElement)base.Target;
 
     }
 

@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Gib.Core\Gib.Core.csproj" />
+    <ProjectReference Include="..\Gip.Core\Gip.Core.csproj" />
   </ItemGroup>
 
 </Project>

@@ -12,12 +12,13 @@ namespace Gip.Core
     public abstract class GipElement : GipObject<GipBin>
     {
 
-        GipElementFactory factory;
+        readonly GipElementFactory factory;
+
         GipState targetState;
         GipState state;
         GipState stateNext;
 
-        readonly List<GibPad> pads = new List<GibPad>();
+        readonly GipPadList pads = new GipPadList();
 
         /// <summary>
         /// Initializes a new instance.
@@ -56,38 +57,28 @@ namespace Gip.Core
         public GipState StateNext => stateNext;
 
         /// <summary>
-        /// Raised when an event occurs in relation to the state of an element.
-        /// </summary>
-        public EventHandler<GipElementStateChangedEventArgs>? StateChangedEvent;
-
-        /// <summary>
         /// Raises the <see cref="StateChangedEvent"/> event.
         /// </summary>
         /// <param name="oldState"></param>
         /// <param name="newState"></param>
         internal void OnStateChangedEvent(GipState oldState, GipState newState)
         {
-            StateChangedEvent?.Invoke(this, new GipElementStateChangedEventArgs(this, oldState, newState));
+            RaiseEvent(new GipElementStateChangedEventArgs(this, oldState, newState));
         }
 
         /// <summary>
         /// Gets the pads of the element.
         /// </summary>
-        public IReadOnlyCollection<GibPad> Pads => pads;
-
-        /// <summary>
-        /// Raised when an event occurs in relation to a pad on the element.
-        /// </summary>
-        public EventHandler<GipElementPadEventArgs>? PadEvent;
+        public IReadOnlyCollection<GipPad> Pads => pads;
 
         /// <summary>
         /// Invoked to raise the the <see cref="PadEvent"/> event.
         /// </summary>
         /// <param name="eventType"></param>
         /// <param name="pad"></param>
-        protected internal void OnPadEvent(GipElementPadEventType eventType, GibPad pad)
+        protected internal void OnPadEvent(GipElementPadEventType eventType, GipPad pad)
         {
-            PadEvent?.Invoke(this, new GipElementPadEventArgs(this, eventType, pad));
+            RaiseEvent(new GipElementPadEventArgs(this, eventType, pad));
         }
 
         /// <summary>
@@ -152,35 +143,30 @@ namespace Gip.Core
         /// Pads are automatically activated when added in the PAUSED or PLAYING state.
         /// </remarks>
         /// <param name="pad"></param>
-        protected virtual void AddPad(GibPad pad)
+        protected virtual void AddPad(GipPad pad)
         {
-            string name;
-            bool active;
-            bool shouldActivate;
+            using var _ = Lock();
 
-            // lock pad to retrieve name and mode
-            lock (pad)
-            {
-                name = pad.Name;
-                active = pad.Mode != GipPadMode.None;
-            }
+            var name = pad.Name;
+            var active = pad.Mode != GipPadMode.None;
 
             // then check to see if there is already a pad by that name on this element
-            lock (this)
-            {
-                if (pads.Any(i => i.Name == name))
-                    throw new GipException($"Padname {name} is not unique in element {Name}.");
+            if (pads.Any(i => i.Name == name))
+                throw new GipException($"Padname {name} is not unique in element {Name}.");
 
-                pad.Element = this;
+            // set parent of pad to ourselves
+            pad.Parent = this;
 
-                // check for active pads
-                shouldActivate = !active && (State > GipState.Ready || StateNext == GipState.Paused);
+            // check for active pads
+            var shouldActivate = !active && (State > GipState.Ready || StateNext == GipState.Paused);
 
-                pads.Add(pad);
-            }
-
+            // add and activate if requird
+            pads.Add(pad);
             if (shouldActivate)
                 pad.SetActive(true);
+
+            // raise pad event
+            OnPadEvent(GipElementPadEventType.Added, pad);
         }
 
         /// <summary>
@@ -192,13 +178,12 @@ namespace Gip.Core
         /// Running state.
         /// </remarks>
         /// <param name="pad"></param>
-        protected virtual void RemovePad(GibPad pad)
+        protected virtual void RemovePad(GipPad pad)
         {
-            lock (pad)
-            {
-                if (pad.Element != this)
-                    throw new GipException($"Pad {pad.Name} does not belong to element {Name} when removing.");
-            }
+            using var _ = Lock();
+
+            if (pad.Parent != this)
+                throw new GipException($"Pad {pad.Name} does not belong to element {Name} when removing.");
         }
 
         /// <summary>
@@ -206,13 +191,13 @@ namespace Gip.Core
         /// </summary>
         /// <param name="name"></param>
         /// <returns></returns>
-        public virtual GibPad? GetStaticPad(string name)
+        public virtual GipPad? GetStaticPad(string name)
         {
-            lock (this)
-                foreach (var pad in pads)
-                    lock (pad)
-                        if (pad.Name == name)
-                            return pad;
+            using var _ = Lock();
+
+            foreach (var pad in pads)
+                if (pad.Name == name)
+                    return pad;
 
             return null;
         }
@@ -221,7 +206,6 @@ namespace Gip.Core
         /// Requests a pad be allocated given the specified name.
         /// </summary>
         /// <param name="name"></param>
-        /// <param name="caps"></param>
         /// <returns></returns>
         protected GipSinkPad? RequestPad(string name)
         {
@@ -242,7 +226,7 @@ namespace Gip.Core
             }
 
             // if we found a template, requests a pad using it
-            return template != null ? RequestPad(template, requestName, GipCap.Any) : null;
+            return template != null ? RequestPad(template, requestName, GipCapList.Any) : null;
         }
 
         /// <summary>
@@ -252,7 +236,7 @@ namespace Gip.Core
         /// <param name="name"></param>
         /// <param name="caps"></param>
         /// <returns></returns>
-        protected GipSinkPad? RequestPad(GipSinkPadTemplate template, string? name, GipCap[] caps)
+        protected GipSinkPad? RequestPad(GipSinkPadTemplate template, string? name, GipCapList caps)
         {
             // factory doesn't contain template
             if (factory.PadTemplates.Contains(template) == false)
@@ -282,7 +266,7 @@ namespace Gip.Core
         /// <param name="name"></param>
         /// <param name="caps"></param>
         /// <returns></returns>
-        protected virtual GipSinkPad? RequestPadCore(GipSinkPadTemplate template, string? name, GipCap[] caps)
+        protected virtual GipSinkPad? RequestPadCore(GipSinkPadTemplate template, string? name, GipCapList caps)
         {
             throw new NotSupportedException();
         }
@@ -607,7 +591,7 @@ namespace Gip.Core
                 return;
             if (pad.Template.Presence != GipPadPresence.Dynamic)
                 return;
-            if (pad.Element != this)
+            if (pad.Parent != this)
                 return;
 
             ReleasePadCore(pad);

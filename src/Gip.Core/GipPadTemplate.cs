@@ -8,7 +8,7 @@ namespace Gip.Core
 
         readonly string name;
         readonly GipPadPresence presence;
-        readonly GipCap[] caps;
+        readonly GipCapList caps;
 
         /// <summary>
         /// Initializes a new instance.
@@ -16,11 +16,11 @@ namespace Gip.Core
         /// <param name="name"></param>
         /// <param name="presence"></param>
         /// <param name="caps"></param>
-        public GipPadTemplate(string name, GipPadPresence presence, GipCap[] caps)
+        public GipPadTemplate(string name, GipPadPresence presence, GipCapList caps)
         {
             this.name = name ?? throw new ArgumentNullException(nameof(name));
             this.presence = presence;
-            this.caps = caps ?? [];
+            this.caps = caps ?? GipCapList.Empty;
         }
 
         /// <summary>
@@ -36,7 +36,7 @@ namespace Gip.Core
         /// <summary>
         /// Gets the caps of the template.
         /// </summary>
-        public GipCap[] Caps => caps;
+        public GipCapList Caps => caps;
 
     }
 

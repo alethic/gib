@@ -19,7 +19,7 @@ namespace Gip.Core
         /// <returns></returns>
         public static bool IsFixedValue(object value)
         {
-            return value is not GipConstraintValue v || v.IsFixed();
+            return value is not GipConstraintValue v || v.IsFixed;
         }
 
         /// <summary>
