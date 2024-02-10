@@ -288,6 +288,13 @@
             this.activateFunc = DefaultActivateFunc;
         }
 
+        /// <inheritdoc />
+        protected override bool CanBeParentOf(GipObject obj)
+        {
+            // a pad cannot be the parent of anything
+            return false;
+        }
+
         /// <summary>
         /// Gets the template of this pad.
         /// </summary>

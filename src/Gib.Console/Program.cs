@@ -8,7 +8,7 @@ namespace Gip.Console
 
         public static void Main(string[] args)
         {
-            var pipeline = new GibPipeline();
+            var pipeline = new GipPipeline();
             var e1 = new SendElement();
             pipeline.AddElement(e1);
             var e2 = new SinkElement();

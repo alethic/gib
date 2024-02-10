@@ -10,6 +10,7 @@ namespace Gip.Core
     {
 
         public delegate GipPadLinkResult LinkFuncDelegate(GipSinkPad sinkPad, GipSendPad sendPad, GipElement element);
+        public delegate GipPadRecvResult RecvFuncDelegate(GipSinkPad sinkPad, GipSendPad sendPad, GipElement element, object? data);
 
         /// <summary>
         /// Default implementation for the link function of a sink pad.
@@ -23,7 +24,21 @@ namespace Gip.Core
             throw new NotImplementedException();
         }
 
+        /// <summary>
+        /// Default implementation for the link function of a sink pad.
+        /// </summary>
+        /// <param name="sinkpad"></param>
+        /// <param name="sendPad"></param>
+        /// <param name="element"></param>
+        /// <param name="data"></param>
+        /// <returns></returns>
+        static GipPadRecvResult DefaultRecvFunc(GipSinkPad sinkpad, GipSendPad sendPad, GipElement element, object? data)
+        {
+            return GipPadRecvResult.Refused;
+        }
+
         LinkFuncDelegate linkFunc;
+        RecvFuncDelegate recvFunc;
 
         /// <summary>
         /// Initializes a new instance.
@@ -33,6 +48,7 @@ namespace Gip.Core
             base(template)
         {
             linkFunc = DefaultLinkFunc;
+            recvFunc = DefaultRecvFunc;
         }
 
         /// <summary>
@@ -42,6 +58,15 @@ namespace Gip.Core
         {
             get => linkFunc;
             set => linkFunc = value;
+        }
+
+        /// <summary>
+        /// Gets or sets the custom receiving function, if any.
+        /// </summary>
+        public RecvFuncDelegate RecvFunc
+        {
+            get => recvFunc;
+            set => recvFunc = value;
         }
 
         /// <summary>

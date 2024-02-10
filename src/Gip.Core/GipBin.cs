@@ -26,6 +26,13 @@ namespace Gip.Core
         public IReadOnlySet<GipElement> Elements => elements;
 
         /// <inheritdoc />
+        protected override bool CanBeParentOf(GipObject obj)
+        {
+            // we accept elements and pads
+            return obj is GipElement || base.CanBeParentOf(obj);
+        }
+
+        /// <inheritdoc />
         protected override bool TryChangeState(GipState state)
         {
             lock (this)

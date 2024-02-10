@@ -49,28 +49,18 @@ namespace Gip.Console
         /// <param name="name"></param>
         /// <param name="caps"></param>
         /// <returns></returns>
-        internal override GipSinkPad RequestPadCore(GipSinkPadTemplate template, string name, GipCapList caps)
+        protected override GipSinkPad RequestPadCore(GipSinkPadTemplate template, string? name, GipCapList caps)
         {
             var pad = template.Create();
-            pad.Name = name;
+            pad.Name = name ?? "";
             pad.UserState = new FileAppendInputContext();
-            AddPad(pad);
             return pad;
         }
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="pad"></param>
-        public override void ReleaseSinkPad(GipSinkPad pad)
+        protected override void ReleasePadCore(GipSinkPad pad)
         {
             pad.UserState = null;
-            RemovePad(pad);
-        }
-
-        protected override bool TryChangeState(GipState state)
-        {
-
+            base.ReleasePadCore(pad);
         }
 
     }

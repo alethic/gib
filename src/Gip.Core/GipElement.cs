@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Runtime.InteropServices;
 
@@ -18,7 +19,7 @@ namespace Gip.Core
         GipState state;
         GipState stateNext;
 
-        readonly GipPadList pads = new GipPadList();
+        internal ImmutableHashSet<GipPad> pads = ImmutableHashSet<GipPad>.Empty;
 
         /// <summary>
         /// Initializes a new instance.
@@ -27,18 +28,6 @@ namespace Gip.Core
         protected GipElement(GipElementFactory factory)
         {
             this.factory = factory ?? throw new ArgumentNullException(nameof(factory));
-        }
-
-        /// <summary>
-        /// Throws an exception if the current state of the element does not match the specified state.
-        /// </summary>
-        /// <param name="state"></param>
-        /// <exception cref="GipException"></exception>
-        internal protected void AssertState(GipState state)
-        {
-            lock (this)
-                if (this.state != state)
-                    throw new GipException($"{nameof(GipElement)} not in required state '{state}'.");
         }
 
         /// <summary>
@@ -56,12 +45,19 @@ namespace Gip.Core
         /// </summary>
         public GipState StateNext => stateNext;
 
+        /// <inheritdoc />
+        protected override bool CanBeParentOf(GipObject obj)
+        {
+            // by default, element can only be parent to pads
+            return obj is GipPad;
+        }
+
         /// <summary>
         /// Raises the <see cref="StateChangedEvent"/> event.
         /// </summary>
         /// <param name="oldState"></param>
         /// <param name="newState"></param>
-        internal void OnStateChangedEvent(GipState oldState, GipState newState)
+        internal void RaiseStateChangedEvent(GipState oldState, GipState newState)
         {
             RaiseEvent(new GipElementStateChangedEventArgs(this, oldState, newState));
         }
@@ -72,11 +68,11 @@ namespace Gip.Core
         public IReadOnlyCollection<GipPad> Pads => pads;
 
         /// <summary>
-        /// Invoked to raise the the <see cref="PadEvent"/> event.
+        /// Invoked to raise the <see cref="PadEvent"/> event.
         /// </summary>
         /// <param name="eventType"></param>
         /// <param name="pad"></param>
-        protected internal void OnPadEvent(GipElementPadEventType eventType, GipPad pad)
+        protected internal void RaisePadEvent(GipElementPadEventType eventType, GipPad pad)
         {
             RaiseEvent(new GipElementPadEventArgs(this, eventType, pad));
         }
@@ -87,19 +83,18 @@ namespace Gip.Core
         /// <param name="targetState"></param>
         public bool TrySetTargetState(GipState targetState)
         {
-            lock (this)
-            {
-                // pipeline is the only element that can change state without a bin
-                if (this is not GipPipeline && Parent == null)
-                    throw new GipException($"Element requires a configured {nameof(GipBin)} parent to change state.");
+            using var _ = Lock();
 
-                // update target state
-                this.targetState = targetState;
+            // pipeline is the only element that can change state without a bin
+            if (this is not GipPipeline && Parent == null)
+                throw new GipException($"Element requires a configured {nameof(GipBin)} parent to change state.");
 
-                // we haven't yet proceeded to the target state, so try to change
-                if (state != targetState)
-                    return TryChangeStateInternal();
-            }
+            // update target state
+            this.targetState = targetState;
+
+            // we haven't yet proceeded to the target state, so try to change
+            if (state != targetState)
+                return TryChangeStateInternal();
 
             // we did no change, indicate success
             return true;
@@ -119,7 +114,7 @@ namespace Gip.Core
 
                     try
                     {
-                        OnStateChangedEvent(oldState, state);
+                        RaiseStateChangedEvent(oldState, state);
                     }
                     catch
                     {
@@ -161,12 +156,12 @@ namespace Gip.Core
             var shouldActivate = !active && (State > GipState.Ready || StateNext == GipState.Paused);
 
             // add and activate if requird
-            pads.Add(pad);
+            pads = pads.Add(pad);
             if (shouldActivate)
                 pad.SetActive(true);
 
             // raise pad event
-            OnPadEvent(GipElementPadEventType.Added, pad);
+            RaisePadEvent(GipElementPadEventType.Added, pad);
         }
 
         /// <summary>
@@ -238,25 +233,33 @@ namespace Gip.Core
         /// <returns></returns>
         protected GipSinkPad? RequestPad(GipSinkPadTemplate template, string? name, GipCapList caps)
         {
+            GipSinkPad? pad;
+
             // factory doesn't contain template
             if (factory.PadTemplates.Contains(template) == false)
-                return null;
+                throw new GipException("Template is not owned by the same element factory as this element.");
 
             // validate name
             if (name != null)
             {
                 // name matches template requirement
                 if (IsValidRequestPadName(template.Name, name) == false)
-                    return null;
+                    throw new GipException("Proposed pad name is not a valid permutation of the template name.");
 
                 // pad with same name is already allocated
-                var pad = GetStaticPad(name);
+                pad = GetStaticPad(name) as GipSinkPad;
                 if (pad != null)
                     throw new GipException($"Element already has a pad named {name}.");
             }
 
             // call element implementation
-            return RequestPadCore(template, name, caps);
+            pad = RequestPadCore(template, name, caps);
+            if (pad == null)
+                return null;
+
+            // add new pad to element
+            AddPad(pad);
+            return pad;
         }
 
         /// <summary>

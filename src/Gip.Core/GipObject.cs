@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Diagnostics;
 
 namespace Gip.Core
@@ -38,6 +36,15 @@ namespace Gip.Core
     /// <summary>
     /// Base of all Gip objects.
     /// </summary>
+    /// <remarks>
+    /// Objects can be parented to other objects, as long as they accept the object as a parent. Each object also maintains an internal linked list of child objects.
+    /// The <see cref="down"/> field records the head node of the child objects. Each child object has a <see cref="next"/> and <see cref="prev"/> field which determines
+    /// its place as a child.
+    /// 
+    /// Objects maintain a global monitor lock within their graph by each holding a reference to the root node of the current graph, and locking around it.
+    /// 
+    /// Objects can raise events which are propigated up in the graph to their parents.
+    /// </remarks>
     public abstract class GipObject
     {
 
@@ -140,7 +147,7 @@ namespace Gip.Core
         public string Name
         {
             get { using (Lock()) { return name; } }
-            protected internal set { SetName(value); }
+            set { SetName(value); }
         }
 
         /// <summary>
@@ -204,11 +211,25 @@ namespace Gip.Core
         }
 
         /// <summary>
+        /// Returns <c>true</c> if this object can accept the given object as a child.
+        /// </summary>
+        /// <param name="obj"></param>
+        protected virtual bool CanBeParentOf(GipObject obj)
+        {
+            return true;
+        }
+
+        /// <summary>
         /// Sets the <see cref="Parent"/> property.
         /// </summary>
         /// <param name="parent"></param>
         protected virtual void SetParent(GipObject? parent)
         {
+            // ask parent if we can be it's child
+            if (parent != null && parent.CanBeParentOf(this) == false)
+                throw new GipException("Cannot parent this object to the specified object.");
+
+            // lock current tree
             using var _ = Lock();
 
             // parent already set
@@ -217,7 +238,10 @@ namespace Gip.Core
             if (this.parent != null)
                 throw new GipException("Element already parented.");
 
-            // obtain an optional lock against the new parent's tree
+            // raise changing event on existing tree
+            RaisePropertyChanging(nameof(Parent), this.parent, parent);
+
+            // obtain a lock against the new parent's tree, if there is one
             var remoteLock = default(GipLock?);
             if (parent != null)
                 remoteLock = parent.Lock();
@@ -227,46 +251,57 @@ namespace Gip.Core
                 // validate that the existing links are correct
                 CheckParentInvariants();
 
-                var next = this.next;
-                var prev = this.prev;
+                var prevParent = this.parent;
+                var prevNext = this.next;
+                var prevPrev = this.prev;
 
                 // unlink from existing parent graph
                 if (this.parent != null)
                 {
-
                     // we had a prev node, so link the next node of our prev over us
-                    if (prev != null)
-                        prev.next = next;
+                    if (prevPrev != null)
+                        prevPrev.next = prevNext;
 
                     // we had a next node, so link the prev node of our next over us
-                    if (next != null)
-                        next.prev = prev;
+                    if (prevNext != null)
+                        prevNext.prev = prevPrev;
 
                     // parent down was previously pointing to us, now points to original next (new head)
                     if (this.parent.down == this)
-                        this.parent.down = next;
+                        this.parent.down = prevNext;
                 }
 
                 // link into new parent structure
                 if (parent != null)
                 {
+                    // update parent
+                    this.parent = parent;
+
                     // parent sibling pointer is already present
-                    if (parent.down != null)
+                    if (this.parent.down != null)
                     {
-                        Debug.Assert(parent.down.prev == null);
-                        parent.down.prev = this; // previous sibling points back to us
-                        this.next = parent.down; // we point to previous sibling
+                        Debug.Assert(this.parent.down.prev == null);
+                        this.parent.down.prev = this; // previous sibling points back to us
+                        this.next = this.parent.down; // we point to previous sibling
                     }
 
                     // new first sibling is us
-                    parent.down = this;
+                    this.parent.down = this;
+
+                    // update root to new parents root
+                    SetRoot(this.parent.root);
+                }
+                else
+                {
+                    // we are the root
+                    SetRoot(this);
                 }
 
                 // validate that we didn't break the links
                 CheckParentInvariants();
 
-                SetRoot(parent?.root ?? this); // reset root of all objects below us to new root or ourselves as root
-                SetPropertyValue(nameof(Parent), ref this.parent, parent);
+                // raise changed event against new parent tree
+                RaisePropertyChanged(nameof(Parent), prevParent, parent);
             }
             finally
             {
