@@ -3,7 +3,7 @@ Globally Infectious Build (or something, I just liked the acronym)
 
 For now this is just going to be prototyping work.
 
-What I'm interested in is a new build system that can form the basis of a replacement for every other build system on the planet. Much as git took over VSC.
+What I'm interested in is a new build system that can form the basis of a replacement for every other build system on the planet. Much as git took over scm.
 
 The aim is to be as simple to use as Make. You should be able to pop open a simple text file, add some elements, and things to do to turn X into Y, and hit run. But also to be such a powerful paradigm that the entire .NET MSBuild SDK could be reimplemented ontop of it.
 
