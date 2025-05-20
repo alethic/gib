@@ -321,3 +321,8 @@ Pads then just exist to name an input/output, and provide a surface by which to 
 
 The actual value delivered is some sort of Object that supports change. Which may be some sort of buffer thing.
 
+### 5-19-2025
+
+Been playing with Gradle. It's neat. Been thinking.... gradle is neat because it's object based, and thus discoverable through intellisense. But there's something else about it: it sort of forms a "web" of projects. Or at least it gets close. You can have parent projects, and then subprojects. There is no intrinsic relationship between parents and children, except that you need a top-level file that specifies all the children. But that's different than the top-level project. It's more like a short circuit for scanning for build.gradle files.
+
+But it makes an interesting IDE experience: unlike MSBuild, when you open a Gradle project, you don't open some top level solution and see a list of projects. You open a directory structure. And some of the nodes are projects.
