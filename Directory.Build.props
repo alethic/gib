@@ -1,6 +1,6 @@
 <Project>
     <PropertyGroup>
-        <LangVersion Condition=" '$(LangVersion)' == '' ">10.0</LangVersion>
+        <LangVersion Condition=" '$(LangVersion)' == '' ">13.0</LangVersion>
     </PropertyGroup>
 
     <ItemGroup>
@@ -8,7 +8,7 @@
     </ItemGroup>
 
     <PropertyGroup Label="Copyright Info">
-        <ProductName>Gib</ProductName>
+        <ProductName>Gip</ProductName>
         <Authors>@(Authors, ',')</Authors>
         <CurrentYear Condition=" '$(CurrentYear)' == '' ">$([System.DateTime]::UtcNow.Year.ToString())</CurrentYear>
         <Copyright>Copyright © $(CurrentYear) @(Authors, ', ')</Copyright>
