@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 
 using Gip.Abstractions;
@@ -6,7 +7,7 @@ using Gip.Abstractions;
 namespace Gip.Hosting
 {
 
-    class RemoteSourceBinding : SourceBinding
+    class RemoteSourceBindingImpl : SourceBinding
     {
 
         readonly ICallContext _context;
@@ -19,7 +20,7 @@ namespace Gip.Hosting
         /// <param name="context"></param>
         /// <param name="schema"></param>
         /// <param name="parameter"></param>
-        public RemoteSourceBinding(ICallContext context, ChannelSchema schema, RemoteSourceParameter parameter)
+        public RemoteSourceBindingImpl(ICallContext context, ChannelSchema schema, RemoteSourceParameter parameter)
         {
             _context = context;
             _schema = schema;
@@ -30,8 +31,13 @@ namespace Gip.Hosting
         public override ChannelSchema Schema => _schema;
 
         /// <inheritdoc />
-        public override IAsyncEnumerable<T> OpenAsync<T>(CancellationToken cancellationToken) => _context.OpenRemoteAsync<T>(_parameter.Uri, cancellationToken);
+        public override IAsyncEnumerable<T> OpenAsync<T>(CancellationToken cancellationToken)
+        {
+            if (typeof(T) != Schema.Signal)
+                throw new ArgumentException($"Type {typeof(T)} is not compatible with channel schema type {Schema.Signal}.");
 
+            return _context.OpenRemoteAsync<T>(_parameter.Uri, cancellationToken);
+        }
     }
 
 }

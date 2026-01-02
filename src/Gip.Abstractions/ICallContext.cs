@@ -15,7 +15,7 @@ namespace Gip.Abstractions
         /// <summary>
         /// Gets a reference to the pipeline host.
         /// </summary>
-        IPipelineHost Host { get; }
+        IPipelineContext Host { get; }
 
         /// <summary>
         /// Gets a service provider that is scoped to the call.

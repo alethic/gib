@@ -26,14 +26,14 @@ namespace Gip.Hosting.AspNetCore.Sample
         /// <summary>
         /// Handles an individual call.
         /// </summary>
-        /// <param name="context"></param>
+        /// <param name="call"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public override async Task CallAsync(ICallContext context, CancellationToken cancellationToken)
+        public override async Task CallAsync(ICallContext call, CancellationToken cancellationToken)
         {
-            var arg0 = context.Sources[0].OpenAsync<int>(cancellationToken);
-            var arg1 = context.Sources[1].OpenAsync<int>(cancellationToken);
-            using var ret = await context.Outputs[0].OpenAsync<int>(cancellationToken);
+            var arg0 = call.Sources[0].OpenAsync<int>(cancellationToken);
+            var arg1 = call.Sources[1].OpenAsync<int>(cancellationToken);
+            using var ret = await call.Outputs[0].OpenAsync<int>(cancellationToken);
             
             int val0 = 0;
             int val1 = 0;

@@ -1,11 +1,8 @@
-﻿using System;
-using System.Threading;
+﻿using System.Threading;
 using System.Threading.Tasks;
 
 using Gip.Abstractions;
 using Gip.Core;
-
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Gip.Hosting.AspNetCore.Sample
 {
@@ -21,20 +18,20 @@ namespace Gip.Hosting.AspNetCore.Sample
                 new ChannelSchema(typeof(string)),
             ],
             [
-                new ChannelSchema(typeof(IFunctionHandle)),
+                new ChannelSchema(typeof(FunctionReference)),
             ]
         );
 
         /// <summary>
         /// Handles an individual call.
         /// </summary>
-        /// <param name="context"></param>
+        /// <param name="call"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public override async Task CallAsync(ICallContext context, CancellationToken cancellationToken)
+        public override async Task CallAsync(ICallContext call, CancellationToken cancellationToken)
         {
-            var arg0 = context.Sources[0].OpenAsync<string>(cancellationToken);
-            using var ret = await context.Outputs[0].OpenAsync<IFunctionHandle>(cancellationToken);
+            var arg0 = call.Sources[0].OpenAsync<string>(cancellationToken);
+            using var ret = await call.Outputs[0].OpenAsync<FunctionReference>(cancellationToken);
 
             IFunctionHandle? childFunc = null;
             
@@ -43,12 +40,12 @@ namespace Gip.Hosting.AspNetCore.Sample
                 switch (v0)
                 {
                     case "1":
-                        childFunc = context.Host.RegisterFunction(new Test1Context());
-                        ret.Write(childFunc);
+                        childFunc = call.Host.CreateFunction(new Test1Context());
+                        ret.Write(call.Host.GetFunctionReference(childFunc));
                         break;
                     case "2":
-                        childFunc = context.Host.RegisterFunction(new Test1Context());
-                        ret.Write(childFunc);
+                        childFunc = call.Host.CreateFunction(new Test2Context());
+                        ret.Write(call.Host.GetFunctionReference(childFunc));
                         break;
                 }
             }

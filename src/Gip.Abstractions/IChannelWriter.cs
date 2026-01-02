@@ -8,7 +8,6 @@ namespace Gip.Abstractions
     /// </summary>
     /// <typeparam name="T"></typeparam>
     public interface IChannelWriter<T> : IDisposable, IAsyncDisposable
-        where T : notnull
     {
 
         /// <summary>

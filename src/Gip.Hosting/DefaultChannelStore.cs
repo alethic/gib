@@ -16,7 +16,7 @@ namespace Gip.Hosting
     /// Implementation of <see cref="IChannelStore"/> that supports a forward-only linked list.
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public class InMemoryChannelStore<T> : IChannelStore<T>
+    class DefaultChannelStore<T> : IChannelStore<T>
     {
 
         const int BLOCK_SIZE = 16;
@@ -41,7 +41,7 @@ namespace Gip.Hosting
         /// <summary>
         /// Initializes a new instance.
         /// </summary>
-        public InMemoryChannelStore()
+        public DefaultChannelStore()
         {
             _endBlock = new Block();
             _begBlock = _endBlock;

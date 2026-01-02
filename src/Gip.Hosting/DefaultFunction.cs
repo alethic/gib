@@ -11,10 +11,10 @@ namespace Gip.Hosting
     /// <summary>
     /// Holds a reference to a registered service in the service container.
     /// </summary>
-    public class LocalFunction : IFunctionHandle
+    class DefaultFunction : IFunctionHandle
     {
 
-        readonly LocalPipelineHost _host;
+        readonly DefaultPipelineContext _host;
         readonly IFunctionContext _context;
         readonly Guid _id;
 
@@ -24,7 +24,7 @@ namespace Gip.Hosting
         /// <param name="host"></param>
         /// <param name="context"></param>
         /// <param name="id"></param>
-        internal LocalFunction(LocalPipelineHost host, IFunctionContext context, Guid id)
+        internal DefaultFunction(DefaultPipelineContext host, IFunctionContext context, Guid id)
         {
             _host = host;
             _context = context;
@@ -47,7 +47,7 @@ namespace Gip.Hosting
         /// <inheritdoc />
         public async ValueTask<ICallHandle> CallAsync(IServiceProvider services, ImmutableArray<SourceParameter> sources, CancellationToken cancellationToken)
         {
-            var context = new LocalCallContext(_host, services, Context, sources);
+            var context = new CallContextImpl(_host, services, Context, sources);
             await context.StartAsync(cancellationToken);
             return context;
         }

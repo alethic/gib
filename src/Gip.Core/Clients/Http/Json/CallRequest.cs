@@ -1,8 +1,11 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace Gip.Hosting.AspNetCore.Models
+namespace Gip.Core.Clients.Http.Json
 {
 
+    /// <summary>
+    /// JSON-serializable call request.
+    /// </summary>
     public class CallRequest
     {
 

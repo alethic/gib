@@ -5,11 +5,11 @@ namespace Gip.Abstractions
 {
 
     /// <summary>
-    /// An <see cref="IPipelineHost"/> is reponsible for delivering call events to the appropriate element instance, managing
-    /// signals stores, and forwarding outbound communication. A <see cref="IPipelineHost"/> is generally consumed within some sort of
+    /// An <see cref="IPipelineContext"/> is reponsible for delivering call events to the appropriate element instance, managing
+    /// signals stores, and forwarding outbound communication. A <see cref="IPipelineContext"/> is generally consumed within some sort of
     /// protocol hosting environment.
     /// </summary>
-    public interface IPipelineHost
+    public interface IPipelineContext
     {
 
         /// <summary>
@@ -33,7 +33,21 @@ namespace Gip.Abstractions
         /// </summary>
         /// <param name="function"></param>
         /// <returns></returns>
-        IFunctionHandle RegisterFunction(IFunctionContext function);
+        IFunctionHandle CreateFunction(IFunctionContext function);
+
+        /// <summary>
+        /// Gets a serializable <see cref="FunctionReference"/> for the given <see cref="IFunctionHandle"/>.
+        /// </summary>
+        /// <param name="function"></param>
+        /// <returns></returns>
+        FunctionReference GetFunctionReference(IFunctionHandle function);
+
+        /// <summary>
+        /// Gets a serializable <see cref="ChannelReference"/> for the given <see cref="IChannelHandle"/>.
+        /// </summary>
+        /// <param name="channel"></param>
+        /// <returns></returns>
+        ChannelReference GetChannelReference(IChannelHandle channel);
 
     }
 

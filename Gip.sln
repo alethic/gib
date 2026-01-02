@@ -29,6 +29,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gip.Tests", "src\Gip.Tests\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gip.Hosting.AspNetCore", "src\Gip.Hosting.AspNetCore\Gip.Hosting.AspNetCore.csproj", "{76DA3264-B489-41F9-AA91-14E6532C9DE6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gib.Base", "src\Gib.Base\Gib.Base.csproj", "{65FAC33F-F919-FF52-6D7D-0D8BB98AE5D5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gib.Console", "src\Gib.Console\Gib.Console.csproj", "{5B95652B-EF13-89EA-7F0E-8E2AD4C6E1B4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -59,6 +63,14 @@ Global
 		{76DA3264-B489-41F9-AA91-14E6532C9DE6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{76DA3264-B489-41F9-AA91-14E6532C9DE6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{76DA3264-B489-41F9-AA91-14E6532C9DE6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{65FAC33F-F919-FF52-6D7D-0D8BB98AE5D5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{65FAC33F-F919-FF52-6D7D-0D8BB98AE5D5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{65FAC33F-F919-FF52-6D7D-0D8BB98AE5D5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{65FAC33F-F919-FF52-6D7D-0D8BB98AE5D5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5B95652B-EF13-89EA-7F0E-8E2AD4C6E1B4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5B95652B-EF13-89EA-7F0E-8E2AD4C6E1B4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5B95652B-EF13-89EA-7F0E-8E2AD4C6E1B4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5B95652B-EF13-89EA-7F0E-8E2AD4C6E1B4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

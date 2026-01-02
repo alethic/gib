@@ -5,8 +5,8 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Gip.Abstractions;
+using Gip.Core.Clients.Http.Json;
 using Gip.Hosting.AspNetCore.Converters;
-using Gip.Hosting.AspNetCore.Models;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -40,18 +40,9 @@ namespace Gip.Hosting.AspNetCore
 
             public async ValueTask WriteChannelAsync(HttpContext context, IChannelHandle channel, CancellationToken cancellationToken)
             {
-                var jsonOptions = new JsonSerializerOptions(DefaultJsonOptions)
-                {
-                    Converters =
-                    {
-                        new FunctionHandleJsonConverter(context),
-                        new ChannelHandleJsonConverter(context),
-                    }
-                };
-
                 await foreach (var item in channel.OpenAsync<T>(cancellationToken))
                 {
-                    await JsonSerializer.SerializeAsync(context.Response.Body, item, jsonOptions, cancellationToken);
+                    await JsonSerializer.SerializeAsync(context.Response.Body, item, DefaultJsonOptions, cancellationToken);
                     await context.Response.WriteAsync("\n", cancellationToken);
                 }
             }
@@ -110,7 +101,7 @@ namespace Gip.Hosting.AspNetCore
         /// <param name="host"></param>
         /// <param name="functionId"></param>
         /// <returns></returns>
-        static async Task GetFunctionAsync(HttpContext context, Guid functionId, [FromServices] IPipelineHost host)
+        static async Task GetFunctionAsync(HttpContext context, Guid functionId, [FromServices] IPipelineContext host)
         {
             if (host.TryGetFunction(functionId, out var func) == false)
             {
@@ -130,7 +121,7 @@ namespace Gip.Hosting.AspNetCore
         /// <param name="body"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        static async Task PostFunctionAsync(HttpContext context, Guid functionId, [FromBody] CallRequest body, [FromServices] IPipelineHost host, CancellationToken cancellationToken)
+        static async Task PostFunctionAsync(HttpContext context, Guid functionId, [FromBody] CallRequest body, [FromServices] IPipelineContext host, CancellationToken cancellationToken)
         {
             if (host.TryGetFunction(functionId, out var func) == false)
             {
@@ -151,9 +142,9 @@ namespace Gip.Hosting.AspNetCore
                 }
 
                 // parameter includes the set of values
-                if (b.Signals is { } signals)
+                if (b.Static is { } signals)
                 {
-                    var v = ImmutableArray.CreateBuilder<object?>(b.Signals.Length);
+                    var v = ImmutableArray.CreateBuilder<object?>(b.Static.Length);
                     foreach (var signal in signals)
                         v.Add(signal.Deserialize(s.Signal));
 
@@ -173,17 +164,8 @@ namespace Gip.Hosting.AspNetCore
             context.Response.ContentType = "application/jsonl";
             context.Response.StatusCode = 200;
 
-            var jsonOptions = new JsonSerializerOptions(DefaultJsonOptions)
-            {
-                Converters =
-                {
-                    new FunctionHandleJsonConverter(context),
-                    new ChannelHandleJsonConverter(context),
-                }
-            };
-
             // output the first line, which is the output argument channels
-            await JsonSerializer.SerializeAsync(context.Response.Body, new CallResult() { Outputs = outputs }, jsonOptions, cancellationToken);
+            await JsonSerializer.SerializeAsync(context.Response.Body, new CallResponse() { Outputs = outputs }, DefaultJsonOptions, cancellationToken);
             await context.Response.WriteAsync("\n", cancellationToken);
             await context.Response.Body.FlushAsync(cancellationToken);
 
@@ -208,7 +190,7 @@ namespace Gip.Hosting.AspNetCore
         /// <param name="host"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        static async Task GetChannelAsync(HttpContext context, Guid channelId, [FromServices] IPipelineHost host, CancellationToken cancellationToken)
+        static async Task GetChannelAsync(HttpContext context, Guid channelId, [FromServices] IPipelineContext host, CancellationToken cancellationToken)
         {
             if (host.TryGetChannel(channelId, out var channel) == false)
             {

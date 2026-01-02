@@ -11,6 +11,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\Gip.Abstractions\Gip.Abstractions.csproj" />
+      <ProjectReference Include="..\Gip.Core\Gip.Core.csproj" />
       <ProjectReference Include="..\Gip.Hosting\Gip.Hosting.csproj" />
     </ItemGroup>
 

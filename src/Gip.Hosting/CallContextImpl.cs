@@ -1,10 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
 using Gip.Abstractions;
+using Gip.Abstractions.Clients;
+
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Gip.Hosting
 {
@@ -12,10 +16,10 @@ namespace Gip.Hosting
     /// <summary>
     /// Represents an outstanding function call.
     /// </summary>
-    class LocalCallContext : ICallContext, ICallHandle
+    class CallContextImpl : ICallContext, ICallHandle
     {
 
-        readonly LocalPipelineHost _host;
+        readonly DefaultPipelineContext _host;
         readonly IServiceProvider _services;
         readonly IFunctionContext _function;
         readonly ImmutableArray<SourceBinding> _sources;
@@ -33,7 +37,7 @@ namespace Gip.Hosting
         /// <param name="function"></param>
         /// <param name="parameters"></param>
         /// <exception cref="ArgumentException"></exception>
-        public LocalCallContext(LocalPipelineHost host, IServiceProvider services, IFunctionContext function, ImmutableArray<SourceParameter> parameters)
+        public CallContextImpl(DefaultPipelineContext host, IServiceProvider services, IFunctionContext function, ImmutableArray<SourceParameter> parameters)
         {
             _host = host;
             _services = services;
@@ -48,8 +52,8 @@ namespace Gip.Hosting
             {
                 sourceBindings.Add(parameters[i] switch
                 {
-                    StaticSourceParameter staticParam => new StaticSourceBinding(this, _function.Schema.Sources[i], staticParam),
-                    RemoteSourceParameter remoteParam => new RemoteSourceBinding(this, _function.Schema.Sources[i], remoteParam),
+                    StaticSourceParameter staticParam => new StaticSourceBindingImpl(this, _function.Schema.Sources[i], staticParam),
+                    RemoteSourceParameter remoteParam => new RemoteSourceBindingImpl(this, _function.Schema.Sources[i], remoteParam),
                     _ => throw new ArgumentException("", nameof(parameters)),
                 });
             }
@@ -60,7 +64,7 @@ namespace Gip.Hosting
             for (int i = 0; i < _function.Schema.Outputs.Length; i++)
             {
                 var channel = _host.CreateChannel(_function.Schema.Outputs[i]);
-                outputBindings.Add(new LocalOutputBinding(channel.Schema, channel));
+                outputBindings.Add(new OutputBindingImpl(channel.Schema, channel));
                 outputParameters.Add(new OutputParameter(channel.Id, channel.Schema));
             }
 
@@ -69,7 +73,7 @@ namespace Gip.Hosting
         }
 
         /// <inheritdoc />
-        public IPipelineHost Host => _host;
+        public IPipelineContext Host => _host;
 
         /// <inheritdoc />
         public IServiceProvider Services => _services;
@@ -99,9 +103,10 @@ namespace Gip.Hosting
         }
 
         /// <inheritdoc />
-        IAsyncEnumerable<T> ICallContext.OpenRemoteAsync<T>(Uri channelUri, CancellationToken cancellationToken)
+        async IAsyncEnumerable<T> ICallContext.OpenRemoteAsync<T>(Uri channelUri, [EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            await foreach (var i in _services.GetRequiredService<IClientFactory>().GetChannel<T>(channelUri).WithCancellation(cancellationToken))
+                yield return i;
         }
 
         /// <inheritdoc />

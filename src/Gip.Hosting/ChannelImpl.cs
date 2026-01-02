@@ -10,10 +10,10 @@ namespace Gip.Hosting
     /// <summary>
     /// Holds a reference to a registered chanel in the channel container.
     /// </summary>
-    public class LocalChannel : IChannelHandle
+    public class ChannelImpl : IChannelHandle
     {
 
-        readonly LocalChannelContainer _container;
+        readonly DefaultChannelContainer _container;
         readonly ChannelSchema _schema;
         readonly IChannelStore _store;
         readonly Guid _id;
@@ -24,7 +24,7 @@ namespace Gip.Hosting
         /// <param name="container"></param>
         /// <param name="store"></param>
         /// <param name="id"></param>
-        internal LocalChannel(LocalChannelContainer container, ChannelSchema schema, IChannelStore store, Guid id)
+        internal ChannelImpl(DefaultChannelContainer container, ChannelSchema schema, IChannelStore store, Guid id)
         {
             _container = container;
             _schema = schema;

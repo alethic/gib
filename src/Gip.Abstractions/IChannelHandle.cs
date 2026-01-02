@@ -6,7 +6,7 @@ namespace Gip.Abstractions
 {
 
     /// <summary>
-    /// Holds a reference to a local or remote channel.
+    /// Holds a reference to a local channel.
     /// </summary>
     public interface IChannelHandle
     {

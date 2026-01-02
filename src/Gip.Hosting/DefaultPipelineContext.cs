@@ -7,18 +7,18 @@ namespace Gip.Hosting
 {
 
     /// <summary>
-    /// Default <see cref="IPipelineHost"/> implementation.
+    /// Default <see cref="IPipelineContext"/> implementation.
     /// </summary>
-    public class LocalPipelineHost : IPipelineHost
+    public abstract class DefaultPipelineContext : IPipelineContext
     {
 
-        readonly LocalFunctionContainer _functions;
-        readonly LocalChannelContainer _channels;
+        readonly DefaultFunctionContainer _functions;
+        readonly DefaultChannelContainer _channels;
 
         /// <summary>
         /// Initializes a new instance.
         /// </summary>
-        public LocalPipelineHost()
+        public DefaultPipelineContext()
         {
             _functions = new(this);
             _channels = new(this);
@@ -65,7 +65,7 @@ namespace Gip.Hosting
         /// </summary>
         /// <param name="function"></param>
         /// <returns></returns>
-        public LocalFunction CreateFunction(IFunctionContext function)
+        internal DefaultFunction CreateFunction(IFunctionContext function)
         {
             return _functions.Create(function);
         }
@@ -75,16 +75,22 @@ namespace Gip.Hosting
         /// </summary>
         /// <param name="schema"></param>
         /// <returns></returns>
-        public LocalChannel CreateChannel(ChannelSchema schema)
+        internal ChannelImpl CreateChannel(ChannelSchema schema)
         {
             return _channels.Create(schema);
         }
 
         /// <inheritdoc />
-        IFunctionHandle IPipelineHost.RegisterFunction(IFunctionContext function)
+        IFunctionHandle IPipelineContext.CreateFunction(IFunctionContext function)
         {
             return CreateFunction(function);
         }
+
+        /// <inheritdoc />
+        public abstract FunctionReference GetFunctionReference(IFunctionHandle function);
+
+        /// <inheritdoc />
+        public abstract ChannelReference GetChannelReference(IChannelHandle channel);
 
     }
 

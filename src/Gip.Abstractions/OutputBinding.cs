@@ -16,8 +16,7 @@ namespace Gip.Abstractions
         /// <typeparam name="T"></typeparam>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public abstract ValueTask<IChannelWriter<T>> OpenAsync<T>(CancellationToken cancellationToken)
-            where T : notnull;
+        public abstract ValueTask<IChannelWriter<T>> OpenAsync<T>(CancellationToken cancellationToken);
 
     }
 

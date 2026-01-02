@@ -30,8 +30,7 @@ namespace Gip.Hosting.AspNetCore.Sample
         /// <param name="services"></param>
         static void ConfigureServices(IServiceCollection services)
         {
-            services.AddControllers().AddProbufFormatters();
-            services.AddPipelineHost();
+            services.AddAspNetCorePipelineContext();
         }
 
         /// <summary>
@@ -41,8 +40,8 @@ namespace Gip.Hosting.AspNetCore.Sample
         /// <param name="app"></param>
         static void ConfigureApplication(WebHostBuilderContext ctx, IApplicationBuilder app)
         {
-            var pipeline = app.ApplicationServices.GetRequiredService<IPipelineHost>();
-            _testHandle = pipeline.RegisterFunction(new RootContext());
+            var pipeline = app.ApplicationServices.GetRequiredService<IPipelineContext>();
+            _testHandle = pipeline.CreateFunction(new RootContext());
             Console.WriteLine(_testHandle.Id);
 
             app.UseForwardedHeaders();

@@ -10,19 +10,19 @@ namespace Gip.Hosting
 {
 
     /// <summary>
-    /// Maintains a set of registered channels within a <see cref="IPipelineHost"/>.
+    /// Maintains a set of registered channels within a <see cref="IPipelineContext"/>.
     /// </summary>
-    class LocalChannelContainer
+    class DefaultChannelContainer
     {
 
         readonly object _lock = new object();
-        readonly LocalPipelineHost _host;
-        readonly WeakDictionary<Guid, LocalChannel> _channelsById = new();
+        readonly DefaultPipelineContext _host;
+        readonly WeakDictionary<Guid, ChannelImpl> _channelsById = new();
 
         /// <summary>
         /// Initializes a new instance.
         /// </summary>
-        public LocalChannelContainer(LocalPipelineHost host)
+        public DefaultChannelContainer(DefaultPipelineContext host)
         {
             _host = host;
         }
@@ -33,13 +33,13 @@ namespace Gip.Hosting
         /// <param name="schema"></param>
         /// <returns></returns>
         /// <exception cref="InvalidOperationException"></exception>
-        public LocalChannel Create(ChannelSchema schema)
+        public ChannelImpl Create(ChannelSchema schema)
         {
             lock (_lock)
             {
                 // each registered function gets a unique key
                 var id = Guid.NewGuid();
-                var hndl = new LocalChannel(this, schema, (IChannelStore)Activator.CreateInstance(typeof(InMemoryChannelStore<>).MakeGenericType(schema.Signal))!, id);
+                var hndl = new ChannelImpl(this, schema, (IChannelStore)Activator.CreateInstance(typeof(DefaultChannelStore<>).MakeGenericType(schema.Signal))!, id);
 
                 if (_channelsById.TryAdd(id, hndl) == false)
                     throw new InvalidOperationException();
@@ -53,7 +53,7 @@ namespace Gip.Hosting
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        public bool TryGetChannel(Guid id, [NotNullWhen(true)] out LocalChannel? handle)
+        public bool TryGetChannel(Guid id, [NotNullWhen(true)] out ChannelImpl? handle)
         {
             lock (_lock)
             {

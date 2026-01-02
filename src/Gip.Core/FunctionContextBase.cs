@@ -22,10 +22,10 @@ namespace Gip.Core
         /// <summary>
         /// Handles an individual call.
         /// </summary>
-        /// <param name="context"></param>
+        /// <param name="call"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public abstract Task CallAsync(ICallContext context, CancellationToken cancellationToken);
+        public abstract Task CallAsync(ICallContext call, CancellationToken cancellationToken);
 
         /// <summary>
         /// Invokes the specified action for each element of the enumerable.

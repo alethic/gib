@@ -2,9 +2,12 @@
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
-namespace Gip.Hosting.AspNetCore.Models
+namespace Gip.Core.Clients.Http.Json
 {
 
+    /// <summary>
+    /// JSON-serializable call source parameter.
+    /// </summary>
     public class CallSourceParameter
     {
 
@@ -12,7 +15,7 @@ namespace Gip.Hosting.AspNetCore.Models
         public Uri? Remote { get; set; }
 
         [JsonPropertyName("s")]
-        public JsonNode[]? Signals { get; set; }
+        public JsonNode[]? Static { get; set; }
 
     }
 
