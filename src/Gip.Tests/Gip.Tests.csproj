@@ -1,0 +1,13 @@
+﻿<Project Sdk="MSTest.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Gip.Abstractions\Gip.Abstractions.csproj" />
+      <ProjectReference Include="..\Gip.Hosting\Gip.Hosting.csproj" />
+    </ItemGroup>
+
+</Project>

@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.2.32505.173
+# Visual Studio Version 18
+VisualStudioVersion = 18.1.11312.151
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{90150B24-0F40-41BB-95EF-D95F50BF06BE}"
 	ProjectSection(SolutionItems) = preProject
@@ -17,13 +17,17 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "dist", "dist", "{2B1DC931-2EBF-4544-8076-3C7BF5870163}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gib.Core", "src\Gib.Core\Gib.Core.csproj", "{ECA4C80C-B40D-4E82-B2FC-EB13E41FD67D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gip.Abstractions", "src\Gip.Abstractions\Gip.Abstractions.csproj", "{EB7383EF-6A3B-C048-03DD-02A66BDEDC7A}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gib.Console", "src\Gib.Console\Gib.Console.csproj", "{700816D6-DC49-40FB-BADB-558FF3D53A64}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gip.Core", "src\Gip.Core\Gip.Core.csproj", "{A2A5F317-A576-7EC9-A187-84F8EE06F2C3}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gib.Tests", "src\Gib.Tests\Gib.Tests.csproj", "{4C2947F7-51DE-4FD5-ACF2-4B259F0022F4}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gip.Hosting", "src\Gip.Hosting\Gip.Hosting.csproj", "{EA1AAA73-E276-D413-8E5F-AD6D85825297}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gip.Core", "src\Gip.Core\Gip.Core.csproj", "{E7D9073E-E6CA-4651-A70E-227014561B73}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gip.Hosting.AspNetCore.Sample", "src\Gip.Hosting.AspNetCore.Sample\Gip.Hosting.AspNetCore.Sample.csproj", "{DD2233AC-F8C7-375A-D7B0-FF494B3CAA7F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gip.Tests", "src\Gip.Tests\Gip.Tests.csproj", "{05DECF4C-B26C-4224-B5E3-A74AFD91D523}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gip.Hosting.AspNetCore", "src\Gip.Hosting.AspNetCore\Gip.Hosting.AspNetCore.csproj", "{76DA3264-B489-41F9-AA91-14E6532C9DE6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -31,22 +35,30 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{ECA4C80C-B40D-4E82-B2FC-EB13E41FD67D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{ECA4C80C-B40D-4E82-B2FC-EB13E41FD67D}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{ECA4C80C-B40D-4E82-B2FC-EB13E41FD67D}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{ECA4C80C-B40D-4E82-B2FC-EB13E41FD67D}.Release|Any CPU.Build.0 = Release|Any CPU
-		{700816D6-DC49-40FB-BADB-558FF3D53A64}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{700816D6-DC49-40FB-BADB-558FF3D53A64}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{700816D6-DC49-40FB-BADB-558FF3D53A64}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{700816D6-DC49-40FB-BADB-558FF3D53A64}.Release|Any CPU.Build.0 = Release|Any CPU
-		{4C2947F7-51DE-4FD5-ACF2-4B259F0022F4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{4C2947F7-51DE-4FD5-ACF2-4B259F0022F4}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{4C2947F7-51DE-4FD5-ACF2-4B259F0022F4}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{4C2947F7-51DE-4FD5-ACF2-4B259F0022F4}.Release|Any CPU.Build.0 = Release|Any CPU
-		{E7D9073E-E6CA-4651-A70E-227014561B73}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{E7D9073E-E6CA-4651-A70E-227014561B73}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{E7D9073E-E6CA-4651-A70E-227014561B73}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{E7D9073E-E6CA-4651-A70E-227014561B73}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EB7383EF-6A3B-C048-03DD-02A66BDEDC7A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EB7383EF-6A3B-C048-03DD-02A66BDEDC7A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EB7383EF-6A3B-C048-03DD-02A66BDEDC7A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EB7383EF-6A3B-C048-03DD-02A66BDEDC7A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A2A5F317-A576-7EC9-A187-84F8EE06F2C3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A2A5F317-A576-7EC9-A187-84F8EE06F2C3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A2A5F317-A576-7EC9-A187-84F8EE06F2C3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A2A5F317-A576-7EC9-A187-84F8EE06F2C3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EA1AAA73-E276-D413-8E5F-AD6D85825297}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EA1AAA73-E276-D413-8E5F-AD6D85825297}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EA1AAA73-E276-D413-8E5F-AD6D85825297}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EA1AAA73-E276-D413-8E5F-AD6D85825297}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DD2233AC-F8C7-375A-D7B0-FF494B3CAA7F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DD2233AC-F8C7-375A-D7B0-FF494B3CAA7F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DD2233AC-F8C7-375A-D7B0-FF494B3CAA7F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DD2233AC-F8C7-375A-D7B0-FF494B3CAA7F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{05DECF4C-B26C-4224-B5E3-A74AFD91D523}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{05DECF4C-B26C-4224-B5E3-A74AFD91D523}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{05DECF4C-B26C-4224-B5E3-A74AFD91D523}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{05DECF4C-B26C-4224-B5E3-A74AFD91D523}.Release|Any CPU.Build.0 = Release|Any CPU
+		{76DA3264-B489-41F9-AA91-14E6532C9DE6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{76DA3264-B489-41F9-AA91-14E6532C9DE6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{76DA3264-B489-41F9-AA91-14E6532C9DE6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{76DA3264-B489-41F9-AA91-14E6532C9DE6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

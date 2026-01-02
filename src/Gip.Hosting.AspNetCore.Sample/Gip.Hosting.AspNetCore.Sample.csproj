@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Gip.Abstractions\Gip.Abstractions.csproj" />
+      <ProjectReference Include="..\Gip.Core\Gip.Core.csproj" />
+      <ProjectReference Include="..\Gip.Hosting.AspNetCore\Gip.Hosting.AspNetCore.csproj" />
+      <ProjectReference Include="..\Gip.Hosting\Gip.Hosting.csproj" />
+    </ItemGroup>
+
+</Project>

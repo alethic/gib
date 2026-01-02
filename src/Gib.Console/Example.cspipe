@@ -1,0 +1,35 @@
+﻿#:import dotnet:nuget://Gib.Base;version=1.2.3 // this impots types from the nuget package
+#:import dotnet:cspipe:git:https://github.com/dotnet/sdk/csharp@10.0.100 // this imports types from the cspipe project on github
+#:import dotnet:cspipe:file://remote/OtherProject.cspipe // this imports types from the remote cspipe in the specified directory
+#:import dotnet:nuget://FooBar;version=1.2.3
+#:import java:jpipe:file://./java.proj.jpipe
+#:import rust:rpipe:file://./rust.proj.rpipe
+
+using Gib.Base.IO;
+using Foo.Bar;
+
+// we want to have the compiler process the files inside the tmp directory, which is synchronized from the src directory, just for the hell of it
+var sync = await ElementAsync<ISyncDirectory>();
+sync.SourceDirectory = ValueOf(new DirectoryPath("src"));
+sync.TargetDirectory = ValueOf(new DirectoryPath("tmp"));
+
+// this filters out the csharp files from the tmp directory
+var source = await ElementAsync<IFileTreeFilter>();
+source.SourceFiles = sync.OutputFiles;
+source.Glob = ValueOf("*.cs");
+
+// this grabs a reference to an element that represents the specified on-disk remote cspipe file
+// the cspipe resolver is smart, in that it returns a reference to the existing loaded project at the exact path
+var remote = await ElementAsync<ICSharpPipe>("dotnet:cspipe:file://remote/OtherProject.cspipe");
+
+var remoteJavaProject = await ElementAsync<IJavaProj>("java:jpipe:file://./java.proj.jpipe");
+
+var remoteRustProject = await ElementAsync<IRustProj>("java:rpipe:file://./rust.proj.rpipe");
+
+
+var csharp = await ElementAsync<ICSharpCompiler>();
+csharp.SourceFiles = source.OutputFiles;
+csharp.EmbeddedResources.Add(remoteJavaProject.BuildOutput);
+csharp.EmbeddedResources.Add(remoteRustProject.);
+csharp.AssemblyPath = ValueOf(new RelativeFile("dst/Project.dll"));
+csharp.PdbPath = ValueOf(new RelativeFile("dst/Project.pdb"));

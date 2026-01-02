@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="BernhardHaus.Collections.WeakDictionary" Version="1.0.4" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.1" />
+        <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="10.0.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Gib.Hosting.Abstractions\Gib.Hosting.Abstractions.csproj" />
+        <ProjectReference Include="..\Gib.Reflection\Gib.Reflection.csproj" />
+    </ItemGroup>
+
+</Project>
