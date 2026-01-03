@@ -45,7 +45,7 @@ namespace Gip.Hosting.AspNetCore.Sample
             var opResultChan = call.Pipeline.CreateChannel(new ChannelSchema(typeof(int)));
 
             // initiate call to receive function, which receives the operator, and writes the results to the result chan
-            using var opCall = await recvFunc.CallAsync(call.Services, [opChan, xChan, yChan], [opResultChan], cancellationToken);
+            using var opCall = await recvFunc.CallAsync([opChan, xChan, yChan], [opResultChan], cancellationToken);
 
             // writer to send function reference value to receiver
             using var opWriter = opChan.OpenWrite<FunctionReference>();

@@ -11,7 +11,6 @@ using Gip.Hosting.AspNetCore.Converters;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Routing.Patterns;
@@ -19,6 +18,9 @@ using Microsoft.AspNetCore.Routing.Patterns;
 namespace Gip.Hosting.AspNetCore
 {
 
+    /// <summary>
+    /// Provides extensions for mapping the <see cref="AspNetCorePipeline"/> to endpoints.
+    /// </summary>
     public static class EndpointRouteBuilderExtensions
     {
 
@@ -76,7 +78,10 @@ namespace Gip.Hosting.AspNetCore
 
         }
 
-        static readonly JsonSerializerOptions DefaultJsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Strict)
+        /// <summary>
+        /// Default JSON options for serialization of our responses.
+        /// </summary>
+        static readonly JsonSerializerOptions DefaultJsonOptions = new(JsonSerializerDefaults.Strict)
         {
             WriteIndented = false,
             Converters =
@@ -156,7 +161,7 @@ namespace Gip.Hosting.AspNetCore
                 return;
             }
 
-            var sources = ImmutableArray.CreateBuilder<IChannelHandle>(func.Schema.Sources.Length);
+            var sources = ImmutableArray.CreateBuilder<IChannelHandle?>(func.Schema.Sources.Length);
             for (int i = 0; i < func.Schema.Sources.Length; i++)
             {
                 var s = func.Schema.Sources[i];
@@ -177,17 +182,17 @@ namespace Gip.Hosting.AspNetCore
                 }
             }
 
-            var outputs = ImmutableArray.CreateBuilder<IChannelHandle>(func.Schema.Outputs.Length);
+            var outputs = ImmutableArray.CreateBuilder<IChannelHandle?>(func.Schema.Outputs.Length);
             for (int i = 0; i < func.Schema.Outputs.Length; i++)
-                sources.Add(pipeline.CreateChannel(func.Schema.Outputs[i]));
+                sources.Add(null);
 
-            // initiates the call, this never exits unless cancelled
-            using var call = await func.CallAsync(context.RequestServices, sources.MoveToImmutable(), outputs.MoveToImmutable(), cancellationToken);
+            // initiates the call
+            await using var call = await func.CallAsync(sources.MoveToImmutable(), outputs.MoveToImmutable(), cancellationToken);
 
             // collect the output parameters
             var outputJson = new CallOutputParameter[call.Outputs.Length];
             for (int i = 0; i < call.Outputs.Length; i++)
-                outputJson[i] = new CallOutputParameter() { Uri = new Uri(new Uri(context.Request.GetEncodedUrl()), $"../c/{call.Outputs[i].Id}") };
+                outputJson[i] = new CallOutputParameter() { Uri = pipeline.GetChannelUri(call.Outputs[i]) };
 
             // set response types
             context.Response.ContentType = "application/jsonl";

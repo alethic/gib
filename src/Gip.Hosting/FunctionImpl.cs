@@ -5,13 +5,17 @@ using System.Threading.Tasks;
 
 using Gip.Abstractions;
 
+using Microsoft.Extensions.DependencyInjection;
+
+using static System.Runtime.InteropServices.JavaScript.JSType;
+
 namespace Gip.Hosting
 {
 
     /// <summary>
     /// Holds a reference to a registered service in the service container.
     /// </summary>
-    class FunctionImpl : IFunctionHandle
+    class FunctionImpl : ILocalFunctionHandle
     {
 
         readonly Pipeline _pipeline;
@@ -43,19 +47,32 @@ namespace Gip.Hosting
         public Guid Id => _id;
 
         /// <inheritdoc />
-        public async ValueTask<ICallHandle> CallAsync(IServiceProvider services, ImmutableArray<IChannelHandle> sources, ImmutableArray<IChannelHandle> outputs, CancellationToken cancellationToken)
+        public async ValueTask<ILocalCallHandle> CallAsync(ImmutableArray<IChannelHandle?> sources, ImmutableArray<IChannelHandle?> outputs, CancellationToken cancellationToken)
         {
-            var sourcesImpl = ImmutableArray.CreateBuilder<ChannelImpl>(sources.Length);
-            foreach (var i in sources)
-                sourcesImpl.Add((ChannelImpl)i);
+            if (sources.Length != Schema.Sources.Length)
+                throw new ArgumentException("Function call does not contain the expected number of sources.", nameof(sources));
+            if (outputs.Length != Schema.Outputs.Length)
+                throw new ArgumentException("Function call does not contain the expected number of outputs.", nameof(outputs));
 
-            var outputsImpl = ImmutableArray.CreateBuilder<ChannelImpl>(outputs.Length);
-            foreach (var i in outputs)
-                outputsImpl.Add((ChannelImpl)i);
+            // copy the sources and fill in the missing channels with local channels
+            var s = ImmutableArray.CreateBuilder<IChannelHandle>(Schema.Sources.Length);
+            for (int i = 0; i < Schema.Sources.Length; i++)
+                s.Add(sources[i] ?? _pipeline.CreateChannel(Schema.Sources[i]));
 
-            var context = new CallImpl(_pipeline, services, Context, sourcesImpl.MoveToImmutable(), outputsImpl.MoveToImmutable());
+            // copy the outputs and fill in the missing channels with local channels
+            var o = ImmutableArray.CreateBuilder<IChannelHandle>(Schema.Outputs.Length);
+            for (int i = 0; i < Schema.Outputs.Length; i++)
+                o.Add(outputs[i] ?? _pipeline.CreateChannel(Schema.Outputs[i]));
+
+            var context = new CallImpl(_pipeline, _pipeline.ServiceProvider.CreateAsyncScope(), Context, s.MoveToImmutable(), o.MoveToImmutable());
             await context.StartAsync(cancellationToken);
             return context;
+        }
+
+        /// <inheritdoc />
+        async ValueTask<ICallHandle> IFunctionHandle.CallAsync(ImmutableArray<IChannelHandle?> sources, ImmutableArray<IChannelHandle?> outputs, CancellationToken cancellationToken)
+        {
+            return await CallAsync(sources, outputs, cancellationToken);
         }
 
     }

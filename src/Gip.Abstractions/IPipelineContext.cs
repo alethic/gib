@@ -18,7 +18,7 @@ namespace Gip.Abstractions
         /// <param name="functionId"></param>
         /// <param name="function"></param>
         /// <returns></returns>
-        bool TryGetFunction(Guid functionId, [NotNullWhen(true)] out IFunctionHandle? function);
+        bool TryGetFunction(Guid functionId, [NotNullWhen(true)] out ILocalFunctionHandle? function);
 
         /// <summary>
         /// Gets a handle to the specified function.
@@ -26,55 +26,49 @@ namespace Gip.Abstractions
         /// <param name="channelId"></param>
         /// <param name="channel"></param>
         /// <returns></returns>
-        bool TryGetChannel(Guid channelId, [NotNullWhen(true)] out IChannelHandle? channel);
+        bool TryGetChannel(Guid channelId, [NotNullWhen(true)] out ILocalChannelHandle? channel);
 
         /// <summary>
         /// Creates a host to a local function.
         /// </summary>
         /// <param name="function"></param>
         /// <returns></returns>
-        IFunctionHandle CreateFunction(IFunctionContext function);
+        ILocalFunctionHandle CreateFunction(IFunctionContext function);
 
         /// <summary>
         /// Creates a host to a local channel.
         /// </summary>
         /// <param name="schema"></param>
         /// <returns></returns>
-        IChannelHandle CreateChannel(ChannelSchema schema);
+        ILocalChannelHandle CreateChannel(ChannelSchema schema);
 
         /// <summary>
         /// Gets a serializable reference to the given function by ID.
         /// </summary>
         /// <param name="functionId"></param>
         /// <returns></returns>
-        Uri GetFunctionUri(Guid functionId);
+        Uri GetLocalFunctionUri(Guid functionId);
 
         /// <summary>
         /// Gets a serializable reference to the given channel by ID.
         /// </summary>
         /// <param name="channelId"></param>
         /// <returns></returns>
-        Uri GetChannelUri(Guid channelId);
+        Uri GetLocalChannelUri(Guid channelId);
 
         /// <summary>
         /// Gets a serializable reference to the given function.
         /// </summary>
         /// <param name="function"></param>
         /// <returns></returns>
-        Uri GetFunctionUri(IFunctionHandle function)
-        {
-            return GetFunctionUri(function.Id);
-        }
+        Uri GetFunctionUri(IFunctionHandle function);
 
         /// <summary>
         /// Gets a serializable reference to the given channel.
         /// </summary>
         /// <param name="channel"></param>
         /// <returns></returns>
-        Uri GetChannelUri(IChannelHandle channel)
-        {
-            return GetFunctionUri(channel.Id);
-        }
+        Uri GetChannelUri(IChannelHandle channel);
 
         /// <summary>
         /// Gets a serializable reference to the given function.
@@ -83,7 +77,10 @@ namespace Gip.Abstractions
         /// <returns></returns>
         FunctionReference GetFunctionReference(IFunctionHandle function)
         {
-            return new FunctionReference(GetFunctionUri(function)) { Instance0 = function };
+            if (function is ILocalFunctionHandle local)
+                return new FunctionReference(GetFunctionUri(local)) { Instance0 = function };
+            else
+                throw new NotImplementedException();
         }
 
         /// <summary>
@@ -93,7 +90,10 @@ namespace Gip.Abstractions
         /// <returns></returns>
         ChannelReference GetChannelReference(IChannelHandle channel)
         {
-            return new ChannelReference(GetChannelUri(channel)) { Instance0 = channel };
+            if (channel is ILocalChannelHandle local)
+                return new ChannelReference(GetChannelUri(local)) { Instance0 = channel };
+            else
+                throw new NotImplementedException();
         }
 
         /// <summary>
@@ -101,7 +101,7 @@ namespace Gip.Abstractions
         /// </summary>
         /// <param name="reference"></param>
         /// <returns></returns>
-        IFunctionHandle GetFunction(FunctionReference reference)
+        IFunctionHandle ResolveFunction(FunctionReference reference)
         {
             if (reference.Instance0 is IFunctionHandle handle)
                 return handle;
@@ -114,7 +114,7 @@ namespace Gip.Abstractions
         /// </summary>
         /// <param name="reference"></param>
         /// <returns></returns>
-        IChannelHandle GetChannel(ChannelReference reference)
+        IChannelHandle ResolveChannel(ChannelReference reference)
         {
             if (reference.Instance0 is IChannelHandle handle)
                 return handle;

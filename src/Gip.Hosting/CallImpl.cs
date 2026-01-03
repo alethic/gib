@@ -5,20 +5,22 @@ using System.Threading.Tasks;
 
 using Gip.Abstractions;
 
+using Microsoft.Extensions.DependencyInjection;
+
 namespace Gip.Hosting
 {
 
     /// <summary>
     /// Represents an outstanding function call.
     /// </summary>
-    class CallImpl : ICallContext, ICallHandle
+    class CallImpl : ICallContext, ILocalCallHandle
     {
 
         readonly Pipeline _pipeline;
-        readonly IServiceProvider _services;
+        readonly AsyncServiceScope _services;
         readonly IFunctionContext _function;
-        readonly ImmutableArray<ChannelImpl> _sources;
-        readonly ImmutableArray<ChannelImpl> _outputs;
+        readonly ImmutableArray<IChannelHandle> _sources;
+        readonly ImmutableArray<IChannelHandle> _outputs;
 
         CancellationTokenSource? _stop;
         Task? _task;
@@ -32,7 +34,7 @@ namespace Gip.Hosting
         /// <param name="sources"></param>
         /// <param name="outputs"></param>
         /// <exception cref="ArgumentException"></exception>
-        public CallImpl(Pipeline pipeline, IServiceProvider services, IFunctionContext function, ImmutableArray<ChannelImpl> sources, ImmutableArray<ChannelImpl> outputs)
+        public CallImpl(Pipeline pipeline, AsyncServiceScope services, IFunctionContext function, ImmutableArray<IChannelHandle> sources, ImmutableArray<IChannelHandle> outputs)
         {
             if (sources.Length != function.Schema.Sources.Length)
                 throw new ArgumentException("Function does not contain the expected number of sources.", nameof(sources));
@@ -50,20 +52,13 @@ namespace Gip.Hosting
         public Pipeline Pipeline => _pipeline;
 
         /// <inheritdoc />
-        public IServiceProvider Services => _services;
+        public IServiceProvider Services => _services.ServiceProvider;
 
         /// <inheritdoc />
-        public ImmutableArray<ChannelImpl> Sources => _sources;
+        public ImmutableArray<IChannelHandle> Sources => _sources;
 
         /// <inheritdoc />
-        public ImmutableArray<ChannelImpl> Outputs => _outputs;
-
-        ImmutableArray<IChannelHandle> ICallContext.Sources => _sources.CastArray<IChannelHandle>();
-
-        ImmutableArray<IChannelHandle> ICallContext.Outputs => _outputs.CastArray<IChannelHandle>();
-
-        /// <inheritdoc />
-        ImmutableArray<IChannelHandle> ICallHandle.Outputs => _outputs.CastArray<IChannelHandle>();
+        public ImmutableArray<IChannelHandle> Outputs => _outputs;
 
         /// <inheritdoc />
         IPipelineContext ICallContext.Pipeline => Pipeline;
@@ -79,13 +74,15 @@ namespace Gip.Hosting
                 throw new InvalidOperationException();
 
             _stop = new CancellationTokenSource();
-            _task = _function.CallAsync(this, _stop.Token);
+            _task = _function.CallAsync(this, _stop.Token).ContinueWith(t => { GC.KeepAlive(this); }); // we keep the CallImpl alive until task completes
             return default;
         }
 
         /// <inheritdoc />
         public void Dispose()
         {
+            GC.SuppressFinalize(this);
+
             try
             {
                 _stop?.Cancel();
@@ -107,11 +104,15 @@ namespace Gip.Hosting
                 _stop = null;
                 _task = null;
             }
+
+            _services.Dispose();
         }
 
         /// <inheritdoc />
         public async ValueTask DisposeAsync()
         {
+            GC.SuppressFinalize(this);
+
             try
             {
                 _stop?.Cancel();
@@ -133,6 +134,16 @@ namespace Gip.Hosting
                 _stop = null;
                 _task = null;
             }
+
+            await _services.DisposeAsync();
+        }
+
+        /// <summary>
+        /// Finalizes the instance.
+        /// </summary>
+        ~CallImpl()
+        {
+            Dispose();
         }
 
     }

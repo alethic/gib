@@ -1,18 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace Gip.Abstractions
 {
 
     public interface IChannelHandle
     {
-
-        /// <summary>
-        /// Gets the ID of the channel.
-        /// </summary>
-        Guid Id { get; }
 
         /// <summary>
         /// Gets the schema of the channel.

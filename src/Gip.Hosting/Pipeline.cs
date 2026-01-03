@@ -12,17 +12,24 @@ namespace Gip.Hosting
     public abstract class Pipeline : IPipelineContext
     {
 
+        readonly IServiceProvider _serviceProvider;
         readonly FunctionContainer _functions;
         readonly ChannelContainer _channels;
 
         /// <summary>
         /// Initializes a new instance.
         /// </summary>
-        public Pipeline()
+        public Pipeline(IServiceProvider serviceProvider)
         {
+            _serviceProvider = serviceProvider;
             _functions = new(this);
             _channels = new(this);
         }
+
+        /// <summary>
+        /// Gets the service provider.
+        /// </summary>
+        public IServiceProvider ServiceProvider => _serviceProvider;
 
         /// <summary>
         /// Attempts to get a reference to an existing function.
@@ -30,7 +37,7 @@ namespace Gip.Hosting
         /// <param name="id"></param>
         /// <param name="registration"></param>
         /// <returns></returns>
-        public bool TryGetFunction(Guid id, [NotNullWhen(true)] out IFunctionHandle? registration)
+        public bool TryGetFunction(Guid id, [NotNullWhen(true)] out ILocalFunctionHandle? registration)
         {
             if (_functions.TryGetFunction(id, out var h))
             {
@@ -48,7 +55,7 @@ namespace Gip.Hosting
         /// <param name="id"></param>
         /// <param name="registration"></param>
         /// <returns></returns>
-        public bool TryGetChannel(Guid id, [NotNullWhen(true)] out IChannelHandle? registration)
+        public bool TryGetChannel(Guid id, [NotNullWhen(true)] out ILocalChannelHandle? registration)
         {
             if (_channels.TryGetChannel(id, out var h))
             {
@@ -65,7 +72,7 @@ namespace Gip.Hosting
         /// </summary>
         /// <param name="function"></param>
         /// <returns></returns>
-        public IFunctionHandle CreateFunction(IFunctionContext function)
+        public ILocalFunctionHandle CreateFunction(IFunctionContext function)
         {
             return _functions.Create(function);
         }
@@ -75,16 +82,34 @@ namespace Gip.Hosting
         /// </summary>
         /// <param name="schema"></param>
         /// <returns></returns>
-        public IChannelHandle CreateChannel(ChannelSchema schema)
+        public ILocalChannelHandle CreateChannel(ChannelSchema schema)
         {
             return _channels.Create(schema);
         }
 
         /// <inheritdoc />
-        public abstract Uri GetFunctionUri(Guid functionId);
+        public Uri GetFunctionUri(IFunctionHandle function)
+        {
+            if (function is FunctionImpl impl)
+                return GetLocalFunctionUri(impl.Id);
+            else
+                throw new NotImplementedException();
+        }
 
         /// <inheritdoc />
-        public abstract Uri GetChannelUri(Guid channelId);
+        public Uri GetChannelUri(IChannelHandle channel)
+        {
+            if (channel is ChannelImpl impl)
+                return GetLocalFunctionUri(impl.Id);
+            else
+                throw new NotImplementedException();
+        }
+
+        /// <inheritdoc />
+        public abstract Uri GetLocalFunctionUri(Guid functionId);
+
+        /// <inheritdoc />
+        public abstract Uri GetLocalChannelUri(Guid channelId);
 
     }
 

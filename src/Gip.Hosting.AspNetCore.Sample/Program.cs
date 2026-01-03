@@ -2,7 +2,6 @@
 using System.Threading.Tasks;
 
 using Gip.Abstractions;
-using Gip.Hosting.AspNetCore.Converters;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -15,9 +14,9 @@ namespace Gip.Hosting.AspNetCore.Sample
     public static class Program
     {
 
-        static IFunctionHandle _testHandle;
+        static ILocalFunctionHandle _testHandle;
 
-        public static Task Main(string[] args) => global::Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder(args)
+        public static Task Main(string[] args) => Host.CreateDefaultBuilder(args)
             .UseContentRoot(AppContext.BaseDirectory)
             .ConfigureWebHostDefaults(b => b.Configure(ConfigureApplication))
             .ConfigureServices(ConfigureServices)

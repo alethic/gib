@@ -1,20 +1,18 @@
-﻿using System.Collections.Immutable;
+﻿using System;
+using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Gip.Abstractions
 {
 
-    /// <summary>
-    /// Holds a reference to a local or remote function.
-    /// </summary>
-    public interface IFunctionHandle
+    public interface ILocalFunctionHandle : IFunctionHandle
     {
 
         /// <summary>
-        /// Gets the schema of the function.
+        /// Gets the ID of the function.
         /// </summary>
-        FunctionSchema Schema { get; }
+        Guid Id { get; }
 
         /// <summary>
         /// Initiates a call to the function. The task returns once the call has been initiated.
@@ -23,7 +21,7 @@ namespace Gip.Abstractions
         /// <param name="outputs"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        ValueTask<ICallHandle> CallAsync(ImmutableArray<IChannelHandle?> sources, ImmutableArray<IChannelHandle?> outputs, CancellationToken cancellationToken);
+        new ValueTask<ILocalCallHandle> CallAsync(ImmutableArray<IChannelHandle?> sources, ImmutableArray<IChannelHandle?> outputs, CancellationToken cancellationToken);
 
     }
 

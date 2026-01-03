@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading;
+using System.Threading.Tasks;
 
 using Gip.Abstractions;
 
@@ -10,7 +11,7 @@ namespace Gip.Hosting
     /// <summary>
     /// Holds a reference to a registered chanel in the channel container.
     /// </summary>
-    class ChannelImpl : IChannelHandle
+    class ChannelImpl : ILocalChannelHandle
     {
 
         readonly ChannelSchema _schema;

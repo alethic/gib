@@ -13,17 +13,17 @@ namespace Gip.Hosting
     {
 
         readonly IChannelStore<T> _store;
-        readonly Action? _dispose;
+        readonly Action? _release;
 
         /// <summary>
         /// Initializes a new instance.
         /// </summary>
         /// <param name="store"></param>
-        /// <param name="dispose"></param>
-        public ChannelStoreWriter(IChannelStore<T> store, Action? dispose)
+        /// <param name="release"></param>
+        public ChannelStoreWriter(IChannelStore<T> store, Action? release)
         {
             _store = store;
-            _dispose = dispose;
+            _release = release;
         }
 
         /// <inheritdoc />
@@ -41,8 +41,10 @@ namespace Gip.Hosting
         /// <inheritdoc />
         public void Dispose()
         {
-            _dispose?.Invoke();
             GC.SuppressFinalize(this);
+
+            if (_release is not null)
+                _release();
         }
 
         /// <summary>

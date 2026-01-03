@@ -7,6 +7,9 @@ using Microsoft.Extensions.Options;
 namespace Gip.Hosting.AspNetCore
 {
 
+    /// <summary>
+    /// Implementation of <see cref="IPipelineContext"/> that supports functions and channels being made available over ASP.NET Core.
+    /// </summary>
     public class AspNetCorePipeline : Pipeline
     {
 
@@ -17,21 +20,23 @@ namespace Gip.Hosting.AspNetCore
         /// Initializes a new instance.
         /// </summary>
         /// <param name="options"></param>
+        /// <param name="services"></param>
         /// <param name="server"></param>
-        public AspNetCorePipeline(IOptions<AspNetCorePipelineOptions> options, IServer server)
+        public AspNetCorePipeline(IOptions<AspNetCorePipelineOptions> options, IServiceProvider services, IServer server) :
+            base(services)
         {
             _options = options;
             _server = server;
         }
 
         /// <inheritdoc />
-        public override Uri GetFunctionUri(Guid functionId)
+        public override Uri GetLocalFunctionUri(Guid functionId)
         {
             return new Uri(GetAbsoluteUri("f/"), functionId.ToString());
         }
 
         /// <inheritdoc />
-        public override Uri GetChannelUri(Guid channelId)
+        public override Uri GetLocalChannelUri(Guid channelId)
         {
             return new Uri(GetAbsoluteUri("c/"), channelId.ToString());
         }

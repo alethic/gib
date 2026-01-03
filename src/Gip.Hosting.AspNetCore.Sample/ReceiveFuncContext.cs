@@ -48,9 +48,9 @@ namespace Gip.Hosting.AspNetCore.Sample
                     opCall = null;
                 }
 
-                var opFunc = call.Pipeline.GetFunction(opRef);
+                var opFunc = call.Pipeline.ResolveFunction(opRef);
                 Console.WriteLine("Switching operation to {0}", call.Pipeline.GetFunctionReference(opFunc).Uri);
-                opCall = await opFunc.CallAsync(call.Services, [xArg, yArg], [ret], cancellationToken);
+                opCall = await opFunc.CallAsync([xArg, yArg], [ret], cancellationToken);
             }
 
             // listen to all of our parameter subscriptions until the invocation is canceled
