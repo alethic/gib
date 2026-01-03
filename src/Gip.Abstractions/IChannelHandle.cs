@@ -1,13 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Gip.Abstractions
 {
 
-    /// <summary>
-    /// Holds a reference to a local channel.
-    /// </summary>
     public interface IChannelHandle
     {
 
@@ -26,7 +24,14 @@ namespace Gip.Abstractions
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
-        IAsyncEnumerable<T> OpenAsync<T>(CancellationToken cancellationToken);
+        IAsyncEnumerable<T> OpenRead<T>(CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Opens a channel for writing.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        IChannelWriter<T> OpenWrite<T>();
 
     }
 

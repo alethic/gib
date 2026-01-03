@@ -37,8 +37,15 @@ namespace Gip.Core
         /// <returns></returns>
         protected async Task ForEachAsync<T>(IAsyncEnumerable<T> async, Func<T, CancellationToken, ValueTask> action, CancellationToken cancellationToken)
         {
-            await foreach (var i in async)
-                await action(i, cancellationToken);
+            try
+            {
+                await foreach (var i in async.WithCancellation(cancellationToken))
+                    await action(i, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                // ignore
+            }
         }
 
     }

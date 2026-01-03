@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Immutable;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -22,29 +23,55 @@ namespace Gip.Hosting.AspNetCore
     {
 
         /// <summary>
-        /// Non-generic interface for JSON channel writers.
+        /// Non-generic interface for JSON channel serializers.
         /// </summary>
-        interface IJsonChannelWriter
+        interface IJsonChannelSerializer
         {
 
-            ValueTask WriteChannelAsync(HttpContext context, IChannelHandle channel, CancellationToken cancellationToken);
+            ValueTask SerializeAsync(HttpContext context, IChannelHandle channel, CancellationToken cancellationToken);
 
         }
 
         /// <summary>
-        /// Generic version of writer. Allows typed invocation of OpenAsync.
+        /// Generic version of writer. Allows typed invocation of reader.
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        class JsonChannelWriter<T> : IJsonChannelWriter
+        class JsonChannelSerializer<T> : IJsonChannelSerializer
         {
 
-            public async ValueTask WriteChannelAsync(HttpContext context, IChannelHandle channel, CancellationToken cancellationToken)
+            public async ValueTask SerializeAsync(HttpContext context, IChannelHandle channel, CancellationToken cancellationToken)
             {
-                await foreach (var item in channel.OpenAsync<T>(cancellationToken))
+                await foreach (var item in channel.OpenRead<T>(cancellationToken))
                 {
                     await JsonSerializer.SerializeAsync(context.Response.Body, item, DefaultJsonOptions, cancellationToken);
                     await context.Response.WriteAsync("\n", cancellationToken);
                 }
+            }
+
+        }
+
+        /// <summary>
+        /// Non-generic interface for JSON channel deserializers.
+        /// </summary>
+        interface IJsonChannelDeserializer
+        {
+
+            void Deserialize(JsonNode[] nodes, IChannelHandle channel, CancellationToken cancellationToken);
+
+        }
+
+        /// <summary>
+        /// Generic version of deserializer. Allows typed invocation of writer.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        class JsonChannelDeserializer<T> : IJsonChannelDeserializer
+        {
+
+            public void Deserialize(JsonNode[] nodes, IChannelHandle channel, CancellationToken cancellationToken)
+            {
+                using var writer = channel.OpenWrite<T>();
+                foreach (var node in nodes)
+                    writer.Write(JsonSerializer.Deserialize<T>(node, DefaultJsonOptions) ?? throw new InvalidOperationException());
             }
 
         }
@@ -117,19 +144,19 @@ namespace Gip.Hosting.AspNetCore
         /// </summary>
         /// <param name="context"></param>
         /// <param name="functionId"></param>
-        /// <param name="host"></param>
+        /// <param name="pipeline"></param>
         /// <param name="body"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        static async Task PostFunctionAsync(HttpContext context, Guid functionId, [FromBody] CallRequest body, [FromServices] IPipelineContext host, CancellationToken cancellationToken)
+        static async Task PostFunctionAsync(HttpContext context, Guid functionId, [FromBody] CallRequest body, [FromServices] IPipelineContext pipeline, CancellationToken cancellationToken)
         {
-            if (host.TryGetFunction(functionId, out var func) == false)
+            if (pipeline.TryGetFunction(functionId, out var func) == false)
             {
                 context.Response.StatusCode = 404;
                 return;
             }
 
-            var sources = ImmutableArray.CreateBuilder<Abstractions.SourceParameter>(func.Schema.Sources.Length);
+            var sources = ImmutableArray.CreateBuilder<IChannelHandle>(func.Schema.Sources.Length);
             for (int i = 0; i < func.Schema.Sources.Length; i++)
             {
                 var s = func.Schema.Sources[i];
@@ -138,34 +165,36 @@ namespace Gip.Hosting.AspNetCore
                 // parameter specifies a remote URI
                 if (b.Remote is { } uri)
                 {
-                    sources.Add(new RemoteSourceParameter(uri));
+                    throw new NotImplementedException();
                 }
 
                 // parameter includes the set of values
                 if (b.Static is { } signals)
                 {
-                    var v = ImmutableArray.CreateBuilder<object?>(b.Static.Length);
-                    foreach (var signal in signals)
-                        v.Add(signal.Deserialize(s.Signal));
-
-                    sources.Add(new StaticSourceParameter(v.ToImmutable()));
+                    var channel = pipeline.CreateChannel(s);
+                    ((IJsonChannelDeserializer)Activator.CreateInstance(typeof(JsonChannelDeserializer<>).MakeGenericType(s.Signal))!).Deserialize(signals, channel, cancellationToken);
+                    sources.Add(channel);
                 }
             }
 
+            var outputs = ImmutableArray.CreateBuilder<IChannelHandle>(func.Schema.Outputs.Length);
+            for (int i = 0; i < func.Schema.Outputs.Length; i++)
+                sources.Add(pipeline.CreateChannel(func.Schema.Outputs[i]));
+
             // initiates the call, this never exits unless cancelled
-            using var call = await func.CallAsync(context.RequestServices, sources.ToImmutable(), cancellationToken);
+            using var call = await func.CallAsync(context.RequestServices, sources.MoveToImmutable(), outputs.MoveToImmutable(), cancellationToken);
 
             // collect the output parameters
-            var outputs = new CallOutputParameter[call.Outputs.Length];
+            var outputJson = new CallOutputParameter[call.Outputs.Length];
             for (int i = 0; i < call.Outputs.Length; i++)
-                outputs[i] = new CallOutputParameter() { Uri = new Uri(new Uri(context.Request.GetEncodedUrl()), $"../c/{call.Outputs[i].Id}") };
+                outputJson[i] = new CallOutputParameter() { Uri = new Uri(new Uri(context.Request.GetEncodedUrl()), $"../c/{call.Outputs[i].Id}") };
 
             // set response types
             context.Response.ContentType = "application/jsonl";
             context.Response.StatusCode = 200;
 
             // output the first line, which is the output argument channels
-            await JsonSerializer.SerializeAsync(context.Response.Body, new CallResponse() { Outputs = outputs }, DefaultJsonOptions, cancellationToken);
+            await JsonSerializer.SerializeAsync(context.Response.Body, new CallResponse() { Outputs = outputJson }, DefaultJsonOptions, cancellationToken);
             await context.Response.WriteAsync("\n", cancellationToken);
             await context.Response.Body.FlushAsync(cancellationToken);
 
@@ -203,7 +232,7 @@ namespace Gip.Hosting.AspNetCore
             context.Response.StatusCode = StatusCodes.Status200OK;
 
             // we use a generic writer so we can invoke the typed write methods
-            await ((IJsonChannelWriter)Activator.CreateInstance(typeof(JsonChannelWriter<>).MakeGenericType(channel.Schema.Signal))!).WriteChannelAsync(context, channel, cancellationToken);
+            await ((IJsonChannelSerializer)Activator.CreateInstance(typeof(JsonChannelSerializer<>).MakeGenericType(channel.Schema.Signal))!).SerializeAsync(context, channel, cancellationToken);
         }
 
     }

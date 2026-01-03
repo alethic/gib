@@ -1,8 +1,4 @@
-﻿using Gip.Abstractions.Clients;
-using Gip.Core.Clients;
-using Gip.Core.Clients.Http;
-
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 
 namespace Gip.Hosting.AspNetCore
 {
@@ -12,8 +8,8 @@ namespace Gip.Hosting.AspNetCore
 
         public static IServiceCollection AddGipClients(this IServiceCollection services)
         {
-            services.AddSingleton<IClientFactory, ClientFactory>();
-            services.AddSingleton<IClientProtocol, HttpClientProtocol>();
+            //services.AddSingleton<IClientFactory, ClientFactory>();
+            //services.AddSingleton<IClientProtocol, HttpClientProtocol>();
             services.AddHttpClient();
             return services;
         }

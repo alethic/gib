@@ -10,19 +10,19 @@ namespace Gip.Hosting
 {
 
     /// <summary>
-    /// Maintains a set of registered functions within a <see cref="DefaultPipelineContext"/>.
+    /// Maintains a set of registered functions within a <see cref="Pipeline"/>.
     /// </summary>
-    class DefaultFunctionContainer
+    class FunctionContainer
     {
 
         readonly object _lock = new object();
-        readonly DefaultPipelineContext _host;
-        readonly WeakDictionary<Guid, DefaultFunction> _functionsById = new();
+        readonly Pipeline _host;
+        readonly WeakDictionary<Guid, FunctionImpl> _functionsById = new();
 
         /// <summary>
         /// Initializes a new instance.
         /// </summary>
-        public DefaultFunctionContainer(DefaultPipelineContext host)
+        public FunctionContainer(Pipeline host)
         {
             _host = host;
         }
@@ -31,7 +31,7 @@ namespace Gip.Hosting
         /// Registers the service within the container. Keeping an instance of the handle keeps the registration alive.
         /// </summary>
         /// <param name="context"></param>
-        public DefaultFunction Create(IFunctionContext context)
+        public FunctionImpl Create(IFunctionContext context)
         {
             lock (_lock)
             {
@@ -39,7 +39,7 @@ namespace Gip.Hosting
                 var id = Guid.NewGuid();
 
                 // start the run task of the context, which should process context events
-                var hndl = new DefaultFunction(_host, context, id);
+                var hndl = new FunctionImpl(_host, context, id);
 
                 try
                 {
@@ -57,11 +57,11 @@ namespace Gip.Hosting
         }
 
         /// <summary>
-        /// Gets a <see cref="DefaultFunction"/> for interacting with the specified function.
+        /// Gets a <see cref="FunctionImpl"/> for interacting with the specified function.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        public bool TryGetFunction(Guid id, [NotNullWhen(true)] out DefaultFunction? handle)
+        public bool TryGetFunction(Guid id, [NotNullWhen(true)] out FunctionImpl? handle)
         {
             lock (_lock)
             {

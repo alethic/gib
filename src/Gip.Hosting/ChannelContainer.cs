@@ -12,17 +12,17 @@ namespace Gip.Hosting
     /// <summary>
     /// Maintains a set of registered channels within a <see cref="IPipelineContext"/>.
     /// </summary>
-    class DefaultChannelContainer
+    class ChannelContainer
     {
 
         readonly object _lock = new object();
-        readonly DefaultPipelineContext _host;
+        readonly Pipeline _host;
         readonly WeakDictionary<Guid, ChannelImpl> _channelsById = new();
 
         /// <summary>
         /// Initializes a new instance.
         /// </summary>
-        public DefaultChannelContainer(DefaultPipelineContext host)
+        public ChannelContainer(Pipeline host)
         {
             _host = host;
         }
@@ -39,7 +39,7 @@ namespace Gip.Hosting
             {
                 // each registered function gets a unique key
                 var id = Guid.NewGuid();
-                var hndl = new ChannelImpl(this, schema, (IChannelStore)Activator.CreateInstance(typeof(DefaultChannelStore<>).MakeGenericType(schema.Signal))!, id);
+                var hndl = new ChannelImpl(schema, (IChannelStore)Activator.CreateInstance(typeof(DefaultChannelStore<>).MakeGenericType(schema.Signal))!, id);
 
                 if (_channelsById.TryAdd(id, hndl) == false)
                     throw new InvalidOperationException();
@@ -49,7 +49,7 @@ namespace Gip.Hosting
         }
 
         /// <summary>
-        /// Gets a <see cref="IChannelHandle"/> for interacting with the specified channel.
+        /// Gets a <see cref="IReadableChannelHandle"/> for interacting with the specified channel.
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>

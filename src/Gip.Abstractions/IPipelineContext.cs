@@ -29,25 +29,98 @@ namespace Gip.Abstractions
         bool TryGetChannel(Guid channelId, [NotNullWhen(true)] out IChannelHandle? channel);
 
         /// <summary>
-        /// Registers the given function and returns a handle.
+        /// Creates a host to a local function.
         /// </summary>
         /// <param name="function"></param>
         /// <returns></returns>
         IFunctionHandle CreateFunction(IFunctionContext function);
 
         /// <summary>
-        /// Gets a serializable <see cref="FunctionReference"/> for the given <see cref="IFunctionHandle"/>.
+        /// Creates a host to a local channel.
+        /// </summary>
+        /// <param name="schema"></param>
+        /// <returns></returns>
+        IChannelHandle CreateChannel(ChannelSchema schema);
+
+        /// <summary>
+        /// Gets a serializable reference to the given function by ID.
+        /// </summary>
+        /// <param name="functionId"></param>
+        /// <returns></returns>
+        Uri GetFunctionUri(Guid functionId);
+
+        /// <summary>
+        /// Gets a serializable reference to the given channel by ID.
+        /// </summary>
+        /// <param name="channelId"></param>
+        /// <returns></returns>
+        Uri GetChannelUri(Guid channelId);
+
+        /// <summary>
+        /// Gets a serializable reference to the given function.
         /// </summary>
         /// <param name="function"></param>
         /// <returns></returns>
-        FunctionReference GetFunctionReference(IFunctionHandle function);
+        Uri GetFunctionUri(IFunctionHandle function)
+        {
+            return GetFunctionUri(function.Id);
+        }
 
         /// <summary>
-        /// Gets a serializable <see cref="ChannelReference"/> for the given <see cref="IChannelHandle"/>.
+        /// Gets a serializable reference to the given channel.
         /// </summary>
         /// <param name="channel"></param>
         /// <returns></returns>
-        ChannelReference GetChannelReference(IChannelHandle channel);
+        Uri GetChannelUri(IChannelHandle channel)
+        {
+            return GetFunctionUri(channel.Id);
+        }
+
+        /// <summary>
+        /// Gets a serializable reference to the given function.
+        /// </summary>
+        /// <param name="function"></param>
+        /// <returns></returns>
+        FunctionReference GetFunctionReference(IFunctionHandle function)
+        {
+            return new FunctionReference(GetFunctionUri(function)) { Instance0 = function };
+        }
+
+        /// <summary>
+        /// Gets a serializable reference to the given channel.
+        /// </summary>
+        /// <param name="channel"></param>
+        /// <returns></returns>
+        ChannelReference GetChannelReference(IChannelHandle channel)
+        {
+            return new ChannelReference(GetChannelUri(channel)) { Instance0 = channel };
+        }
+
+        /// <summary>
+        /// Gets a handle to the function represented by the reference.
+        /// </summary>
+        /// <param name="reference"></param>
+        /// <returns></returns>
+        IFunctionHandle GetFunction(FunctionReference reference)
+        {
+            if (reference.Instance0 is IFunctionHandle handle)
+                return handle;
+            else
+                throw new NotImplementedException();
+        }
+
+        /// <summary>
+        /// Gets a handle to the channel represented by the reference.
+        /// </summary>
+        /// <param name="reference"></param>
+        /// <returns></returns>
+        IChannelHandle GetChannel(ChannelReference reference)
+        {
+            if (reference.Instance0 is IChannelHandle handle)
+                return handle;
+            else
+                throw new NotImplementedException();
+        }
 
     }
 

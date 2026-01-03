@@ -2,12 +2,20 @@
 
 namespace Gip.Abstractions
 {
+
+    /// <summary>
+    /// Provides an interface for writing to an output channel.
+    /// </summary>
+    public interface IChannelWriter : IDisposable
+    {
+
+    }
     
     /// <summary>
     /// Provides an interface for writing to an output channel.
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public interface IChannelWriter<T> : IDisposable, IAsyncDisposable
+    public interface IChannelWriter<T> : IChannelWriter
     {
 
         /// <summary>
@@ -20,11 +28,6 @@ namespace Gip.Abstractions
         /// Resets the channel.
         /// </summary>
         void Reset();
-
-        /// <summary>
-        /// Completes the channel.
-        /// </summary>
-        void Complete();
 
     }
 

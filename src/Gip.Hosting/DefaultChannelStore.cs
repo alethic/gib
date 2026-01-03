@@ -77,6 +77,7 @@ namespace Gip.Hosting
             // replace both blocks with new empty blocks
             _endBlock = _endBlock.Next = new Block();
             _begBlock = _endBlock;
+            _monitor.Pulse();
         }
 
         /// <inheritdoc />
@@ -88,6 +89,7 @@ namespace Gip.Hosting
                 return;
 
             _endBlock.Next = _endBlock;
+            _monitor.Pulse();
         }
 
         /// <inheritdoc />
@@ -103,7 +105,7 @@ namespace Gip.Hosting
         /// <inheritdoc />
         public IAsyncEnumerable<T> OpenAsync(CancellationToken cancellationToken = default)
         {
-            return new AsyncEnumerable(_monitor, cancellationToken, _begBlock);
+            return new AsyncEnumerable(this, _monitor, cancellationToken, _begBlock);
         }
 
         /// <summary>
@@ -112,6 +114,7 @@ namespace Gip.Hosting
         struct AsyncEnumerable : IAsyncEnumerable<T>
         {
 
+            readonly DefaultChannelStore<T> _store;
             readonly AsyncMonitor _monitor;
             readonly CancellationToken _cancellationToken;
             readonly Block _initialBlock;
@@ -119,10 +122,13 @@ namespace Gip.Hosting
             /// <summary>
             /// Initializes a new instance.
             /// </summary>
+            /// <param name="store"></param>
             /// <param name="monitor"></param>
+            /// <param name="cancellationToken"></param>
             /// <param name="initialBlock"></param>
-            public AsyncEnumerable(AsyncMonitor monitor, CancellationToken cancellationToken, Block initialBlock)
+            public AsyncEnumerable(DefaultChannelStore<T> store, AsyncMonitor monitor, CancellationToken cancellationToken, Block initialBlock)
             {
+                _store = store;
                 _monitor = monitor;
                 _cancellationToken = cancellationToken;
                 _initialBlock = initialBlock;
@@ -131,7 +137,7 @@ namespace Gip.Hosting
             /// <inheritdoc />
             public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
             {
-                return new AsyncEnumerator(_monitor, CancellationTokenSource.CreateLinkedTokenSource(_cancellationToken, cancellationToken).Token, _initialBlock);
+                return new AsyncEnumerator(_store, _monitor, CancellationTokenSource.CreateLinkedTokenSource(_cancellationToken, cancellationToken).Token, _initialBlock);
             }
 
         }
@@ -142,6 +148,7 @@ namespace Gip.Hosting
         class AsyncEnumerator : IAsyncEnumerator<T>
         {
 
+            readonly DefaultChannelStore<T> _store;
             readonly AsyncMonitor _monitor;
             readonly CancellationToken _cancellationToken;
 
@@ -151,10 +158,13 @@ namespace Gip.Hosting
             /// <summary>
             /// Initializes a new instance starting from the specified block.
             /// </summary>
+            /// <param name="store"></param>
             /// <param name="monitor"></param>
+            /// <param name="cancellationToken"></param>
             /// <param name="initialBlock"></param>
-            public AsyncEnumerator(AsyncMonitor monitor, CancellationToken cancellationToken, Block initialBlock)
+            public AsyncEnumerator(DefaultChannelStore<T> store, AsyncMonitor monitor, CancellationToken cancellationToken, Block initialBlock)
             {
+                _store = store;
                 _monitor = monitor;
                 _cancellationToken = cancellationToken;
                 _block = initialBlock;
@@ -178,8 +188,8 @@ namespace Gip.Hosting
                         return true;
                     }
 
-                    // the block could get bigger, or terminate, but hasn't yet
-                    if (_block.Count < BLOCK_SIZE && _block.Next == null)
+                    // block could expand, or a next block could be added, but has not yet
+                    if (_block.Count <= BLOCK_SIZE && _block.Next == null)
                     {
                         await _monitor.WaitAsync(_cancellationToken);
                         continue;

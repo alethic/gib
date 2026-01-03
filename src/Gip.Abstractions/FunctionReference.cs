@@ -6,9 +6,18 @@ using Gip.Abstractions.Json;
 namespace Gip.Abstractions
 {
 
+    /// <summary>
+    /// Signal structure that represents a reference to a function.
+    /// </summary>
+    /// <param name="Uri"></param>
     [JsonConverter(typeof(FunctionReferenceJsonConverter))]
     public readonly record struct FunctionReference(Uri Uri)
     {
+
+        /// <summary>
+        /// Arbitrary reference to an instance to keep it alive while it sits in the signal queue.
+        /// </summary>
+        public readonly object? Instance0 { get; init; }
 
     }
 

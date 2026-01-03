@@ -1,4 +1,5 @@
-﻿using System.Threading;
+﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Gip.Abstractions;
@@ -15,10 +16,10 @@ namespace Gip.Hosting.AspNetCore.Sample
         /// </summary>
         public override FunctionSchema Schema { get; } = new FunctionSchema(
             [
-                new ChannelSchema(typeof(string)),
+
             ],
             [
-                new ChannelSchema(typeof(FunctionReference)),
+
             ]
         );
 
@@ -30,31 +31,71 @@ namespace Gip.Hosting.AspNetCore.Sample
         /// <returns></returns>
         public override async Task CallAsync(ICallContext call, CancellationToken cancellationToken)
         {
-            var arg0 = call.Sources[0].OpenAsync<string>(cancellationToken);
-            using var ret = await call.Outputs[0].OpenAsync<FunctionReference>(cancellationToken);
+            int i = 0;
 
-            IFunctionHandle? childFunc = null;
-            
-            async ValueTask Eval(string v0, CancellationToken cancellationToken)
+            // function to receive reference to operator func
+            var recvFunc = call.Pipeline.CreateFunction(new ReceiveFuncContext());
+
+            // channel to send input to receive function
+            var opChan = call.Pipeline.CreateChannel(new ChannelSchema(typeof(FunctionReference)));
+            var xChan = call.Pipeline.CreateChannel(new ChannelSchema(typeof(int)));
+            var yChan = call.Pipeline.CreateChannel(new ChannelSchema(typeof(int)));
+
+            // channel on which to receive results from op
+            var opResultChan = call.Pipeline.CreateChannel(new ChannelSchema(typeof(int)));
+
+            // initiate call to receive function, which receives the operator, and writes the results to the result chan
+            using var opCall = await recvFunc.CallAsync(call.Services, [opChan, xChan, yChan], [opResultChan], cancellationToken);
+
+            // writer to send function reference value to receiver
+            using var opWriter = opChan.OpenWrite<FunctionReference>();
+
+            // channel and writer to write X value
+            using var xWriter = xChan.OpenWrite<int>();
+
+            // channel and writer to write Y value
+            using var yWriter = yChan.OpenWrite<int>();
+
+            // periodically change operator func
+            var fun = Task.Run(async () =>
             {
-                switch (v0)
+                while (cancellationToken.IsCancellationRequested == false)
                 {
-                    case "1":
-                        childFunc = call.Host.CreateFunction(new Test1Context());
-                        ret.Write(call.Host.GetFunctionReference(childFunc));
-                        break;
-                    case "2":
-                        childFunc = call.Host.CreateFunction(new Test2Context());
-                        ret.Write(call.Host.GetFunctionReference(childFunc));
-                        break;
+                    opWriter.Reset();
+
+                    if (i++ % 2 == 0)
+                        opWriter.Write(call.Pipeline.GetFunctionReference(call.Pipeline.CreateFunction(new AdderContext())));
+                    else
+                        opWriter.Write(call.Pipeline.GetFunctionReference(call.Pipeline.CreateFunction(new MultiContext())));
+
+                    await Task.Delay(10000, cancellationToken);
                 }
-            }
+            });
 
-            // listen to all of our parameter subscriptions until the invocation is canceled
-            await Task.WhenAll(ForEachAsync(arg0, Eval, cancellationToken));
+            var val = Task.Run(async () =>
+            {
+                while (cancellationToken.IsCancellationRequested == false)
+                {
+                    // send new random X value
+                    xWriter.Reset();
+                    xWriter.Write(Random.Shared.Next());
 
-            // our return value is finished
-            ret.Complete();
+                    // send new random Y value
+                    yWriter.Reset();
+                    yWriter.Write(Random.Shared.Next());
+
+                    // wait a second before updating value
+                    await Task.Delay(1000, cancellationToken);
+                }
+            });
+
+            var ret = Task.Run(async () =>
+            {
+                await foreach (var i in opResultChan.OpenRead<int>(cancellationToken))
+                    System.Console.WriteLine(i);
+            });
+
+            await Task.WhenAll(fun, val, ret);
         }
 
     }

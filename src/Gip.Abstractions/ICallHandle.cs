@@ -10,7 +10,7 @@ namespace Gip.Abstractions
         /// <summary>
         /// Gets the output parameters of the call.
         /// </summary>
-        ImmutableArray<OutputParameter> Outputs { get; }
+        ImmutableArray<IChannelHandle> Outputs { get; }
 
     }
 

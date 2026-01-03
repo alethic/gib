@@ -32,11 +32,6 @@ namespace Gip.Abstractions
         void Reset();
 
         /// <summary>
-        /// Completes the channel.
-        /// </summary>
-        void Complete();
-
-        /// <summary>
         /// Gets whether or not the channel has been completed.
         /// </summary>
         bool IsComplete { get; }

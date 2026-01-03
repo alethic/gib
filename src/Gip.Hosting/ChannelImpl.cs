@@ -10,23 +10,22 @@ namespace Gip.Hosting
     /// <summary>
     /// Holds a reference to a registered chanel in the channel container.
     /// </summary>
-    public class ChannelImpl : IChannelHandle
+    class ChannelImpl : IChannelHandle
     {
 
-        readonly DefaultChannelContainer _container;
         readonly ChannelSchema _schema;
         readonly IChannelStore _store;
         readonly Guid _id;
 
+        IChannelWriter? _writer = null;
+
         /// <summary>
         /// Initializes a new instance.
         /// </summary>
-        /// <param name="container"></param>
         /// <param name="store"></param>
         /// <param name="id"></param>
-        internal ChannelImpl(DefaultChannelContainer container, ChannelSchema schema, IChannelStore store, Guid id)
+        internal ChannelImpl(ChannelSchema schema, IChannelStore store, Guid id)
         {
-            _container = container;
             _schema = schema;
             _store = store;
             _id = id;
@@ -37,16 +36,48 @@ namespace Gip.Hosting
         /// </summary>
         public IChannelStore Store => _store;
 
-        /// <summary>
-        /// Gets the ID of the channel.
-        /// </summary>
+        /// <inheritdoc />
         public Guid Id => _id;
 
         /// <inheritdoc />
         public ChannelSchema Schema => _schema;
 
         /// <inheritdoc />
-        public IAsyncEnumerable<T> OpenAsync<T>(CancellationToken cancellationToken) => ((IChannelStore<T>)_store).OpenAsync(cancellationToken);
+        public IAsyncEnumerable<T> OpenRead<T>(CancellationToken cancellationToken)
+        {
+            if (typeof(T) != Schema.Signal)
+                throw new ArgumentException($"Type {typeof(T)} is not compatible with channel schema type {Schema.Signal}.");
+
+            return ((IChannelStore<T>)_store).OpenAsync(cancellationToken);
+        }
+
+        /// <inheritdoc />
+        public IChannelWriter<T> OpenWrite<T>()
+        {
+            if (typeof(T) != Schema.Signal)
+                throw new ArgumentException($"Type {typeof(T)} is not compatible with channel schema type {Schema.Signal}.");
+
+            lock (this)
+            {
+                if (_writer is not null)
+                    throw new InvalidOperationException("Only a single writer can be opened to a channel at a time.");
+
+                var writer = new ChannelStoreWriter<T>((IChannelStore<T>)_store, ReleaseWriter);
+                _writer = writer;
+                return writer;
+            }
+        }
+
+        /// <summary>
+        /// Disposes of the writer.
+        /// </summary>
+        void ReleaseWriter()
+        {
+            lock (this)
+            {
+                _writer = null;
+            }
+        }
 
     }
 

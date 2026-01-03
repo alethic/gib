@@ -11,22 +11,22 @@ namespace Gip.Hosting
     /// <summary>
     /// Holds a reference to a registered service in the service container.
     /// </summary>
-    class DefaultFunction : IFunctionHandle
+    class FunctionImpl : IFunctionHandle
     {
 
-        readonly DefaultPipelineContext _host;
+        readonly Pipeline _pipeline;
         readonly IFunctionContext _context;
         readonly Guid _id;
 
         /// <summary>
         /// Initializes a new instance.
         /// </summary>
-        /// <param name="host"></param>
+        /// <param name="pipeline"></param>
         /// <param name="context"></param>
         /// <param name="id"></param>
-        internal DefaultFunction(DefaultPipelineContext host, IFunctionContext context, Guid id)
+        internal FunctionImpl(Pipeline pipeline, IFunctionContext context, Guid id)
         {
-            _host = host;
+            _pipeline = pipeline;
             _context = context;
             _id = id;
         }
@@ -39,15 +39,21 @@ namespace Gip.Hosting
         /// </summary>
         public IFunctionContext Context => _context;
 
-        /// <summary>
-        /// Gets the ID of the function.
-        /// </summary>
+        /// <inheritdoc />
         public Guid Id => _id;
 
         /// <inheritdoc />
-        public async ValueTask<ICallHandle> CallAsync(IServiceProvider services, ImmutableArray<SourceParameter> sources, CancellationToken cancellationToken)
+        public async ValueTask<ICallHandle> CallAsync(IServiceProvider services, ImmutableArray<IChannelHandle> sources, ImmutableArray<IChannelHandle> outputs, CancellationToken cancellationToken)
         {
-            var context = new CallContextImpl(_host, services, Context, sources);
+            var sourcesImpl = ImmutableArray.CreateBuilder<ChannelImpl>(sources.Length);
+            foreach (var i in sources)
+                sourcesImpl.Add((ChannelImpl)i);
+
+            var outputsImpl = ImmutableArray.CreateBuilder<ChannelImpl>(outputs.Length);
+            foreach (var i in outputs)
+                outputsImpl.Add((ChannelImpl)i);
+
+            var context = new CallImpl(_pipeline, services, Context, sourcesImpl.MoveToImmutable(), outputsImpl.MoveToImmutable());
             await context.StartAsync(cancellationToken);
             return context;
         }

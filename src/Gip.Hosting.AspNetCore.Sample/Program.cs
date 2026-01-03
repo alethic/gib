@@ -30,7 +30,7 @@ namespace Gip.Hosting.AspNetCore.Sample
         /// <param name="services"></param>
         static void ConfigureServices(IServiceCollection services)
         {
-            services.AddAspNetCorePipelineContext();
+            services.AddAspNetCorePipeline();
         }
 
         /// <summary>

@@ -7,7 +7,7 @@ using Gip.Core;
 namespace Gip.Hosting.AspNetCore.Sample
 {
 
-    public class Test1Context : FunctionContextBase
+    public class AdderContext : FunctionContextBase
     {
 
         /// <summary>
@@ -31,24 +31,48 @@ namespace Gip.Hosting.AspNetCore.Sample
         /// <returns></returns>
         public override async Task CallAsync(ICallContext call, CancellationToken cancellationToken)
         {
-            var arg0 = call.Sources[0].OpenAsync<int>(cancellationToken);
-            var arg1 = call.Sources[1].OpenAsync<int>(cancellationToken);
-            using var ret = await call.Outputs[0].OpenAsync<int>(cancellationToken);
-            
-            int val0 = 0;
-            int val1 = 0;
+            var arg0 = call.Sources[0].OpenRead<int>(cancellationToken);
+            var arg1 = call.Sources[1].OpenRead<int>(cancellationToken);
+            using var ret = call.Outputs[0].OpenWrite<int>();
 
-            async ValueTask Eval(int v0, int v1) => ret.Write(val0 + val1);
-            ValueTask Eval0(int v0, CancellationToken cancellationToken) => Eval(val0 = v0, val1);
-            ValueTask Eval1(int v1, CancellationToken cancellationToken) => Eval(val0, val1 = v1);
+            int? val0 = null;
+            int? val1 = null;
+
+            void Eval()
+            {
+                if (val0 is int v0 && val1 is int v1)
+                {
+                    ret.Reset();
+                    ret.Write(v0 + v1);
+                }
+            }
+
+            ValueTask Eval0(int v0, CancellationToken cancellationToken)
+            {
+                lock (call)
+                {
+                    val0 = v0;
+                    Eval();
+                }
+
+                return default;
+            }
+
+            ValueTask Eval1(int v1, CancellationToken cancellationToken)
+            {
+                lock (call)
+                {
+                    val1 = v1;
+                    Eval();
+                }
+
+                return default;
+            }
 
             // listen to all of our parameter subscriptions until the invocation is canceled
             await Task.WhenAll(
                 ForEachAsync(arg0, Eval0, cancellationToken),
                 ForEachAsync(arg1, Eval1, cancellationToken));
-
-            // our return value is finished
-            ret.Complete();
         }
 
     }

@@ -1,17 +1,13 @@
 ﻿using System;
 
-using Gip.Abstractions;
-
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Extensions.Options;
 
-using static System.Runtime.InteropServices.JavaScript.JSType;
-
 namespace Gip.Hosting.AspNetCore
 {
 
-    public class AspNetCorePipelineContext : DefaultPipelineContext
+    public class AspNetCorePipeline : Pipeline
     {
 
         readonly IOptions<AspNetCorePipelineOptions> _options;
@@ -22,22 +18,22 @@ namespace Gip.Hosting.AspNetCore
         /// </summary>
         /// <param name="options"></param>
         /// <param name="server"></param>
-        public AspNetCorePipelineContext(IOptions<AspNetCorePipelineOptions> options, IServer server)
+        public AspNetCorePipeline(IOptions<AspNetCorePipelineOptions> options, IServer server)
         {
             _options = options;
             _server = server;
         }
 
         /// <inheritdoc />
-        public override FunctionReference GetFunctionReference(IFunctionHandle function)
+        public override Uri GetFunctionUri(Guid functionId)
         {
-            return new FunctionReference(new Uri(GetAbsoluteUri("f/"), function.Id.ToString()));
+            return new Uri(GetAbsoluteUri("f/"), functionId.ToString());
         }
 
         /// <inheritdoc />
-        public override ChannelReference GetChannelReference(IChannelHandle channel)
+        public override Uri GetChannelUri(Guid channelId)
         {
-            return new ChannelReference(new Uri(GetAbsoluteUri("c/"), channel.Id.ToString()));
+            return new Uri(GetAbsoluteUri("c/"), channelId.ToString());
         }
 
         /// <summary>
