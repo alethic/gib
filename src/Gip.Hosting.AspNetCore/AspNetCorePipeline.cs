@@ -1,8 +1,15 @@
 ﻿using System;
+using System.Linq;
+
+using Gip.Abstractions;
+using Gip.Abstractions.Clients;
 
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Gip.Hosting.AspNetCore
 {
@@ -14,19 +21,19 @@ namespace Gip.Hosting.AspNetCore
     {
 
         readonly IOptions<AspNetCorePipelineOptions> _options;
-        readonly IServer _server;
+        readonly IClientFactory _clients;
 
         /// <summary>
         /// Initializes a new instance.
         /// </summary>
         /// <param name="options"></param>
         /// <param name="services"></param>
-        /// <param name="server"></param>
-        public AspNetCorePipeline(IOptions<AspNetCorePipelineOptions> options, IServiceProvider services, IServer server) :
-            base(services)
+        /// <param name="clients"></param>
+        public AspNetCorePipeline(IOptions<AspNetCorePipelineOptions> options, IServiceProvider services, IClientFactory clients) :
+            base(services, clients)
         {
             _options = options;
-            _server = server;
+            _clients = clients;
         }
 
         /// <inheritdoc />
@@ -39,6 +46,34 @@ namespace Gip.Hosting.AspNetCore
         public override Uri GetLocalChannelUri(Guid channelId)
         {
             return new Uri(GetAbsoluteUri("c/"), channelId.ToString());
+        }
+
+        /// <inheritdoc />
+        public override bool TryGetLocalFunctionId(Uri uri, out Guid functionId)
+        {
+            var l = uri.Segments.LastOrDefault();
+            if (Guid.TryParse(l, out var g) && GetLocalFunctionUri(g) == uri)
+            {
+                functionId = g;
+                return true;
+            }
+
+            functionId = Guid.Empty;
+            return false;
+        }
+
+        /// <inheritdoc />
+        public override bool TryGetLocalChannelId(Uri uri, out Guid channelId)
+        {
+            var l = uri.Segments.LastOrDefault();
+            if (Guid.TryParse(l, out var g) && GetLocalChannelUri(g) == uri)
+            {
+                channelId = g;
+                return true;
+            }
+
+            channelId = Guid.Empty;
+            return false;
         }
 
         /// <summary>
@@ -55,10 +90,11 @@ namespace Gip.Hosting.AspNetCore
         /// <exception cref="InvalidOperationException"></exception>
         Uri GetDefaultBaseUri()
         {
-            if (_server.Features.Get<IServerAddressesFeature>() is { } _addresses)
-                foreach (var address in _addresses.Addresses)
-                    if (string.IsNullOrEmpty(address) == false)
-                        return new Uri(new Uri(EnsureEndsWithSlash(address)), "gip/");
+            if (ServiceProvider.GetService<IServer>() is { } server)
+                if (server.Features.Get<IServerAddressesFeature>() is { } addresses)
+                    foreach (var address in addresses.Addresses)
+                        if (string.IsNullOrEmpty(address) == false)
+                            return new Uri(new Uri(EnsureEndsWithSlash(address)), "gip/");
 
             throw new InvalidOperationException("No configured base URI.");
         }

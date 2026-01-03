@@ -33,20 +33,9 @@ namespace Gip.Core.Clients.Http
         }
 
         /// <inheritdoc />
-        public async ValueTask<ICallClient> CallAsync(ImmutableArray<SourceParameter> sources, CancellationToken cancellationToken)
+        public async ValueTask<ICallClient> CallAsync(ImmutableArray<Uri> sources, CancellationToken cancellationToken)
         {
-            var p = new CallSourceParameter[sources.Length];
-            for (int i = 0; i < sources.Length; i++)
-            {
-                p[i] = sources[i] switch
-                {
-                    RemoteSourceParameter remoteParam => new CallSourceParameter() { Remote = remoteParam.Uri },
-                    StaticSourceParameter staticParam => new CallSourceParameter() { Static = staticParam.Signals.Select(i => JsonSerializer.SerializeToNode(i) ?? throw new InvalidOperationException()).ToArray() },
-                    _ => throw new NotImplementedException(),
-                };
-            }
-
-            var response = await _http.PutAsJsonAsync(_uri, new CallRequest() { Sources = p }, cancellationToken);
+            var response = await _http.PutAsJsonAsync(_uri, new CallRequest() { Sources = sources }, cancellationToken);
             response.EnsureSuccessStatusCode();
 
             if (response.Content.Headers.ContentType?.MediaType != "application/jsonl")

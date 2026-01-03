@@ -14,6 +14,7 @@ namespace Gip.Hosting.AspNetCore
         public static IServiceCollection AddAspNetCorePipeline(this IServiceCollection services, Uri? baseUri = null)
         {
             services.AddOptions<AspNetCorePipelineOptions>().Configure(o => o.BaseUri = baseUri);
+            services.AddGipClients();
             services.TryAddSingleton<IPipelineContext, AspNetCorePipeline>();
             return services;
         }

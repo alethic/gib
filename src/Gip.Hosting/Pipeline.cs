@@ -2,6 +2,7 @@
 using System.Diagnostics.CodeAnalysis;
 
 using Gip.Abstractions;
+using Gip.Abstractions.Clients;
 
 namespace Gip.Hosting
 {
@@ -15,13 +16,17 @@ namespace Gip.Hosting
         readonly IServiceProvider _serviceProvider;
         readonly FunctionContainer _functions;
         readonly ChannelContainer _channels;
+        readonly IClientFactory _clients;
 
         /// <summary>
         /// Initializes a new instance.
         /// </summary>
-        public Pipeline(IServiceProvider serviceProvider)
+        /// <param name="serviceProvider"></param>
+        /// <param name="clients"></param>
+        public Pipeline(IServiceProvider serviceProvider, IClientFactory clients)
         {
             _serviceProvider = serviceProvider;
+            _clients = clients;
             _functions = new(this);
             _channels = new(this);
         }
@@ -90,8 +95,10 @@ namespace Gip.Hosting
         /// <inheritdoc />
         public Uri GetFunctionUri(IFunctionHandle function)
         {
-            if (function is FunctionImpl impl)
-                return GetLocalFunctionUri(impl.Id);
+            if (function is ILocalFunctionHandle local)
+                return GetLocalFunctionUri(local.Id);
+            else if (function is IRemoteFunctionHandle remote)
+                return remote.Uri;
             else
                 throw new NotImplementedException();
         }
@@ -99,8 +106,10 @@ namespace Gip.Hosting
         /// <inheritdoc />
         public Uri GetChannelUri(IChannelHandle channel)
         {
-            if (channel is ChannelImpl impl)
-                return GetLocalFunctionUri(impl.Id);
+            if (channel is ILocalChannelHandle local)
+                return GetLocalChannelUri(local.Id);
+            else if (channel is IRemoteChannelHandle remote)
+                return remote.Uri;
             else
                 throw new NotImplementedException();
         }
@@ -110,6 +119,24 @@ namespace Gip.Hosting
 
         /// <inheritdoc />
         public abstract Uri GetLocalChannelUri(Guid channelId);
+
+        /// <inheritdoc />
+        public IRemoteFunctionHandle GetRemoteFunction(Uri uri, FunctionSchema schema)
+        {
+            return new RemoteFunctionImpl(_clients, schema, uri);
+        }
+
+        /// <inheritdoc />
+        public IRemoteChannelHandle GetRemoteChannel(Uri uri, ChannelSchema schema)
+        {
+            return new RemoteChannelImpl(_clients, schema, uri);
+        }
+
+        /// <inheritdoc />
+        public abstract bool TryGetLocalFunctionId(Uri uri, out Guid functionId);
+
+        /// <inheritdoc />
+        public abstract bool TryGetLocalChannelId(Uri uri, out Guid channelId);
 
     }
 

@@ -18,7 +18,7 @@ namespace Gip.Abstractions.Clients
         /// <param name="sources"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        ValueTask<ICallClient> CallAsync(ImmutableArray<SourceParameter> sources, CancellationToken cancellationToken);
+        ValueTask<ICallClient> CallAsync(ImmutableArray<Uri> sources, CancellationToken cancellationToken);
 
     }
 

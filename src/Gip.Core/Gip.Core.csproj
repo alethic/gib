@@ -12,10 +12,13 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Compile Include="Clients\Http\Json\CallOutputParameter.cs" />
+      <Compile Include="Clients\ClientFactory.cs" />
+      <Compile Include="Clients\Http\HttpCallClient.cs" />
+      <Compile Include="Clients\Http\HttpChannelClient.cs" />
+      <Compile Include="Clients\Http\HttpClientProtocol.cs" />
+      <Compile Include="Clients\Http\HttpFunctionClient.cs" />
       <Compile Include="Clients\Http\Json\CallRequest.cs" />
       <Compile Include="Clients\Http\Json\CallResponse.cs" />
-      <Compile Include="Clients\Http\Json\CallSourceParameter.cs" />
     </ItemGroup>
 
     <ItemGroup>

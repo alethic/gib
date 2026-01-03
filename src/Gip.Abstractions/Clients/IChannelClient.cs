@@ -8,7 +8,7 @@ namespace Gip.Abstractions.Clients
     /// A <see cref="IChannelClient{T}"/> represents a connection to a remote Gip channel.
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public interface IChannelClient<T> : IAsyncEnumerable<T?>, IDisposable, IAsyncDisposable
+    public interface IChannelClient<T> : IAsyncEnumerable<T>, IDisposable, IAsyncDisposable
     {
 
 

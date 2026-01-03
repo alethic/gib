@@ -1,4 +1,6 @@
-﻿using System.Text.Json.Serialization;
+﻿using System;
+using System.Collections.Immutable;
+using System.Text.Json.Serialization;
 
 namespace Gip.Core.Clients.Http.Json
 {
@@ -10,7 +12,7 @@ namespace Gip.Core.Clients.Http.Json
     {
 
         [JsonPropertyName("o")]
-        public required CallOutputParameter[] Outputs { get; set; }
+        public required ImmutableArray<Uri> Outputs { get; set; }
 
     }
 

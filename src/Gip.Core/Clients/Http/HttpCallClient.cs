@@ -34,7 +34,7 @@ namespace Gip.Core.Clients.Http
         /// <inheritdoc />
         public IChannelClient<T> GetOutputChannel<T>(int index)
         {
-            return new HttpChannelClient<T>(_http, _callResponse.Outputs[index].Uri);
+            return new HttpChannelClient<T>(_http, _callResponse.Outputs[index]);
         }
 
         /// <inheritdoc />

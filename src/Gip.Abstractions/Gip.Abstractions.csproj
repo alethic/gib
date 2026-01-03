@@ -5,10 +5,4 @@
         <Nullable>enable</Nullable>
     </PropertyGroup>
 
-    <ItemGroup>
-      <Compile Remove="Clients\**" />
-      <EmbeddedResource Remove="Clients\**" />
-      <None Remove="Clients\**" />
-    </ItemGroup>
-
 </Project>

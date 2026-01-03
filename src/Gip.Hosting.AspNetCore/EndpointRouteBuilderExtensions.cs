@@ -165,21 +165,10 @@ namespace Gip.Hosting.AspNetCore
             for (int i = 0; i < func.Schema.Sources.Length; i++)
             {
                 var s = func.Schema.Sources[i];
-                var b = body.Sources[i];
+                var u = body.Sources[i];
 
                 // parameter specifies a remote URI
-                if (b.Remote is { } uri)
-                {
-                    throw new NotImplementedException();
-                }
-
-                // parameter includes the set of values
-                if (b.Static is { } signals)
-                {
-                    var channel = pipeline.CreateChannel(s);
-                    ((IJsonChannelDeserializer)Activator.CreateInstance(typeof(JsonChannelDeserializer<>).MakeGenericType(s.Signal))!).Deserialize(signals, channel, cancellationToken);
-                    sources.Add(channel);
-                }
+                throw new NotImplementedException();
             }
 
             var outputs = ImmutableArray.CreateBuilder<IWritableChannelHandle?>(func.Schema.Outputs.Length);
@@ -190,16 +179,16 @@ namespace Gip.Hosting.AspNetCore
             await using var call = await func.CallAsync(sources.MoveToImmutable(), outputs.MoveToImmutable(), cancellationToken);
 
             // collect the output parameters
-            var outputJson = new CallOutputParameter[call.Outputs.Length];
+            var outputUris = ImmutableArray.CreateBuilder<Uri>(call.Outputs.Length);
             for (int i = 0; i < call.Outputs.Length; i++)
-                outputJson[i] = new CallOutputParameter() { Uri = pipeline.GetChannelUri(call.Outputs[i]) };
+                outputUris.Add(pipeline.GetChannelUri(call.Outputs[i]));
 
             // set response types
             context.Response.ContentType = "application/jsonl";
             context.Response.StatusCode = 200;
 
             // output the first line, which is the output argument channels
-            await JsonSerializer.SerializeAsync(context.Response.Body, new CallResponse() { Outputs = outputJson }, DefaultJsonOptions, cancellationToken);
+            await JsonSerializer.SerializeAsync(context.Response.Body, new CallResponse() { Outputs = outputUris.MoveToImmutable() }, DefaultJsonOptions, cancellationToken);
             await context.Response.WriteAsync("\n", cancellationToken);
             await context.Response.Body.FlushAsync(cancellationToken);
 

@@ -97,6 +97,22 @@ namespace Gip.Abstractions
         }
 
         /// <summary>
+        /// Gets a function handle to the remote function.
+        /// </summary>
+        /// <param name="uri"></param>
+        /// <param name="schema"></param>
+        /// <returns></returns>
+        IRemoteFunctionHandle GetRemoteFunction(Uri uri, FunctionSchema schema);
+
+        /// <summary>
+        /// Gets a channel handle to the remote channel.
+        /// </summary>
+        /// <param name="uri"></param>
+        /// <param name="schema"></param>
+        /// <returns></returns>
+        IRemoteChannelHandle GetRemoteChannel(Uri uri, ChannelSchema schema);
+
+        /// <summary>
         /// Gets a handle to the function represented by the reference.
         /// </summary>
         /// <param name="reference"></param>
@@ -105,9 +121,19 @@ namespace Gip.Abstractions
         {
             if (reference.Instance0 is IFunctionHandle handle)
                 return handle;
+            else if (TryGetLocalFunctionId(reference.Uri, out var id) && TryGetFunction(id, out var local))
+                return local;
             else
                 throw new NotImplementedException();
         }
+
+        /// <summary>
+        /// Attempts to lookup the local function from the given URI.
+        /// </summary>
+        /// <param name="uri"></param>
+        /// <param name="functionId"></param>
+        /// <returns></returns>
+        bool TryGetLocalFunctionId(Uri uri, out Guid functionId);
 
         /// <summary>
         /// Gets a handle to the channel represented by the reference.
@@ -118,9 +144,19 @@ namespace Gip.Abstractions
         {
             if (reference.Instance0 is IChannelHandle handle)
                 return handle;
+            else if (TryGetLocalChannelId(reference.Uri, out var id) && TryGetChannel(id, out var local))
+                return local;
             else
                 throw new NotImplementedException();
         }
+
+        /// <summary>
+        /// Attempts to lookup the local channel ID from the given URI.
+        /// </summary>
+        /// <param name="uri"></param>
+        /// <param name="channelId"></param>
+        /// <returns></returns>
+        bool TryGetLocalChannelId(Uri uri, out Guid channelId);
 
     }
 
