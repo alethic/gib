@@ -14,7 +14,7 @@ namespace Gip.Hosting.AspNetCore.Sample
     public static class Program
     {
 
-        static ILocalFunctionHandle _testHandle;
+        static ILocalFunctionHandle? _testHandle;
 
         public static Task Main(string[] args) => Host.CreateDefaultBuilder(args)
             .UseContentRoot(AppContext.BaseDirectory)

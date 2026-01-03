@@ -3,7 +3,7 @@
 namespace Gip.Abstractions
 {
 
-    public interface ILocalChannelHandle : IChannelHandle
+    public interface ILocalChannelHandle : IChannelHandle, IReadableChannelHandle, IWritableChannelHandle
     {
 
         /// <summary>

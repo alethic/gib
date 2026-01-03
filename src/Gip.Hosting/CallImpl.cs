@@ -19,8 +19,8 @@ namespace Gip.Hosting
         readonly Pipeline _pipeline;
         readonly AsyncServiceScope _services;
         readonly IFunctionContext _function;
-        readonly ImmutableArray<IChannelHandle> _sources;
-        readonly ImmutableArray<IChannelHandle> _outputs;
+        readonly ImmutableArray<IReadableChannelHandle> _sources;
+        readonly ImmutableArray<IWritableChannelHandle> _outputs;
 
         CancellationTokenSource? _stop;
         Task? _task;
@@ -34,7 +34,7 @@ namespace Gip.Hosting
         /// <param name="sources"></param>
         /// <param name="outputs"></param>
         /// <exception cref="ArgumentException"></exception>
-        public CallImpl(Pipeline pipeline, AsyncServiceScope services, IFunctionContext function, ImmutableArray<IChannelHandle> sources, ImmutableArray<IChannelHandle> outputs)
+        public CallImpl(Pipeline pipeline, AsyncServiceScope services, IFunctionContext function, ImmutableArray<IReadableChannelHandle> sources, ImmutableArray<IWritableChannelHandle> outputs)
         {
             if (sources.Length != function.Schema.Sources.Length)
                 throw new ArgumentException("Function does not contain the expected number of sources.", nameof(sources));
@@ -55,10 +55,10 @@ namespace Gip.Hosting
         public IServiceProvider Services => _services.ServiceProvider;
 
         /// <inheritdoc />
-        public ImmutableArray<IChannelHandle> Sources => _sources;
+        public ImmutableArray<IReadableChannelHandle> Sources => _sources;
 
         /// <inheritdoc />
-        public ImmutableArray<IChannelHandle> Outputs => _outputs;
+        public ImmutableArray<IWritableChannelHandle> Outputs => _outputs;
 
         /// <inheritdoc />
         IPipelineContext ICallContext.Pipeline => Pipeline;

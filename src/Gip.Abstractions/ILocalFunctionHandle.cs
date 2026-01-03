@@ -21,7 +21,7 @@ namespace Gip.Abstractions
         /// <param name="outputs"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        new ValueTask<ILocalCallHandle> CallAsync(ImmutableArray<IChannelHandle?> sources, ImmutableArray<IChannelHandle?> outputs, CancellationToken cancellationToken);
+        new ValueTask<ILocalCallHandle> CallAsync(ImmutableArray<IReadableChannelHandle?> sources, ImmutableArray<IWritableChannelHandle?> outputs, CancellationToken cancellationToken);
 
     }
 

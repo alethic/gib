@@ -25,12 +25,12 @@ namespace Gip.Abstractions
         /// <summary>
         /// Gets the bindings of the source channels of the call.
         /// </summary>
-        ImmutableArray<IChannelHandle> Sources { get; }
+        ImmutableArray<IReadableChannelHandle> Sources { get; }
 
         /// <summary>
         /// Gets the bindings of the output channels of the call.
         /// </summary>
-        ImmutableArray<IChannelHandle> Outputs { get; }
+        ImmutableArray<IWritableChannelHandle> Outputs { get; }
 
     }
 

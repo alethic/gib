@@ -47,7 +47,7 @@ namespace Gip.Hosting
         public Guid Id => _id;
 
         /// <inheritdoc />
-        public async ValueTask<ILocalCallHandle> CallAsync(ImmutableArray<IChannelHandle?> sources, ImmutableArray<IChannelHandle?> outputs, CancellationToken cancellationToken)
+        public async ValueTask<ILocalCallHandle> CallAsync(ImmutableArray<IReadableChannelHandle?> sources, ImmutableArray<IWritableChannelHandle?> outputs, CancellationToken cancellationToken)
         {
             if (sources.Length != Schema.Sources.Length)
                 throw new ArgumentException("Function call does not contain the expected number of sources.", nameof(sources));
@@ -55,12 +55,12 @@ namespace Gip.Hosting
                 throw new ArgumentException("Function call does not contain the expected number of outputs.", nameof(outputs));
 
             // copy the sources and fill in the missing channels with local channels
-            var s = ImmutableArray.CreateBuilder<IChannelHandle>(Schema.Sources.Length);
+            var s = ImmutableArray.CreateBuilder<IReadableChannelHandle>(Schema.Sources.Length);
             for (int i = 0; i < Schema.Sources.Length; i++)
                 s.Add(sources[i] ?? _pipeline.CreateChannel(Schema.Sources[i]));
 
             // copy the outputs and fill in the missing channels with local channels
-            var o = ImmutableArray.CreateBuilder<IChannelHandle>(Schema.Outputs.Length);
+            var o = ImmutableArray.CreateBuilder<IWritableChannelHandle>(Schema.Outputs.Length);
             for (int i = 0; i < Schema.Outputs.Length; i++)
                 o.Add(outputs[i] ?? _pipeline.CreateChannel(Schema.Outputs[i]));
 
@@ -70,7 +70,7 @@ namespace Gip.Hosting
         }
 
         /// <inheritdoc />
-        async ValueTask<ICallHandle> IFunctionHandle.CallAsync(ImmutableArray<IChannelHandle?> sources, ImmutableArray<IChannelHandle?> outputs, CancellationToken cancellationToken)
+        async ValueTask<ICallHandle> IFunctionHandle.CallAsync(ImmutableArray<IReadableChannelHandle?> sources, ImmutableArray<IWritableChannelHandle?> outputs, CancellationToken cancellationToken)
         {
             return await CallAsync(sources, outputs, cancellationToken);
         }

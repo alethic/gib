@@ -30,7 +30,7 @@ namespace Gip.Hosting.AspNetCore
         interface IJsonChannelSerializer
         {
 
-            ValueTask SerializeAsync(HttpContext context, IChannelHandle channel, CancellationToken cancellationToken);
+            ValueTask SerializeAsync(HttpContext context, IReadableChannelHandle channel, CancellationToken cancellationToken);
 
         }
 
@@ -41,7 +41,7 @@ namespace Gip.Hosting.AspNetCore
         class JsonChannelSerializer<T> : IJsonChannelSerializer
         {
 
-            public async ValueTask SerializeAsync(HttpContext context, IChannelHandle channel, CancellationToken cancellationToken)
+            public async ValueTask SerializeAsync(HttpContext context, IReadableChannelHandle channel, CancellationToken cancellationToken)
             {
                 await foreach (var item in channel.OpenRead<T>(cancellationToken))
                 {
@@ -58,7 +58,7 @@ namespace Gip.Hosting.AspNetCore
         interface IJsonChannelDeserializer
         {
 
-            void Deserialize(JsonNode[] nodes, IChannelHandle channel, CancellationToken cancellationToken);
+            void Deserialize(JsonNode[] nodes, IWritableChannelHandle channel, CancellationToken cancellationToken);
 
         }
 
@@ -69,7 +69,7 @@ namespace Gip.Hosting.AspNetCore
         class JsonChannelDeserializer<T> : IJsonChannelDeserializer
         {
 
-            public void Deserialize(JsonNode[] nodes, IChannelHandle channel, CancellationToken cancellationToken)
+            public void Deserialize(JsonNode[] nodes, IWritableChannelHandle channel, CancellationToken cancellationToken)
             {
                 using var writer = channel.OpenWrite<T>();
                 foreach (var node in nodes)
@@ -161,7 +161,7 @@ namespace Gip.Hosting.AspNetCore
                 return;
             }
 
-            var sources = ImmutableArray.CreateBuilder<IChannelHandle?>(func.Schema.Sources.Length);
+            var sources = ImmutableArray.CreateBuilder<IReadableChannelHandle?>(func.Schema.Sources.Length);
             for (int i = 0; i < func.Schema.Sources.Length; i++)
             {
                 var s = func.Schema.Sources[i];
@@ -182,7 +182,7 @@ namespace Gip.Hosting.AspNetCore
                 }
             }
 
-            var outputs = ImmutableArray.CreateBuilder<IChannelHandle?>(func.Schema.Outputs.Length);
+            var outputs = ImmutableArray.CreateBuilder<IWritableChannelHandle?>(func.Schema.Outputs.Length);
             for (int i = 0; i < func.Schema.Outputs.Length; i++)
                 sources.Add(null);
 
