@@ -20,7 +20,11 @@ namespace Gib.Base.IO
         /// <returns></returns>
         public static FileStat Read(string path)
         {
-            return new FileStat(File.GetCreationTimeUtc(path), File.GetLastWriteTimeUtc(path), File.GetLastAccessTimeUtc(path));
+            var info = new FileInfo(path);
+            if (info.Exists)
+                return new FileStat(info.CreationTimeUtc, info.LastWriteTimeUtc, info.LastAccessTimeUtc);
+            else
+                return new FileStat();
         }
 
     }

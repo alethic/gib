@@ -7,7 +7,12 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <Compile Remove="Exec.cs" />
+    </ItemGroup>
+
+    <ItemGroup>
         <PackageReference Include="CliWrap" Version="3.10.0" />
+        <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="10.0.1" />
         <PackageReference Include="protobuf-net" Version="3.2.56" />
         <PackageReference Include="protobuf-net.BuildTools" Version="3.2.52">
             <PrivateAssets>all</PrivateAssets>
@@ -17,6 +22,9 @@
 
     <ItemGroup>
         <ProjectReference Include="..\Gib.Core\Gib.Core.csproj" />
+        <ProjectReference Include="..\Gip.Abstractions\Gip.Abstractions.csproj" />
+        <ProjectReference Include="..\Gip.Base\Gip.Base.csproj" />
+        <ProjectReference Include="..\Gip.Core\Gip.Core.csproj" />
     </ItemGroup>
 
 </Project>

@@ -1,9 +1,16 @@
 ﻿using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Gib.Base.IO;
+
 using Gip.Abstractions;
+using Gip.Base;
+using Gip.Base.Collections;
 using Gip.Core;
+
+using Google.Protobuf.WellKnownTypes;
 
 namespace Gip.Hosting.AspNetCore.Sample
 {
@@ -14,14 +21,7 @@ namespace Gip.Hosting.AspNetCore.Sample
         /// <summary>
         /// Gets the schema for the function.
         /// </summary>
-        public override FunctionSchema Schema { get; } = new FunctionSchema(
-            [
-
-            ],
-            [
-
-            ]
-        );
+        public override FunctionSchema Schema { get; } = FunctionSchema.CreateBuilder().Build();
 
         /// <summary>
         /// Handles an individual call.
@@ -31,71 +31,117 @@ namespace Gip.Hosting.AspNetCore.Sample
         /// <returns></returns>
         public override async Task CallAsync(ICallContext call, CancellationToken cancellationToken)
         {
-            int i = 0;
+            var fileListFunc = call.Pipeline.CreateFunction(new FileList());
+            var fileFilterFunc = call.Pipeline.CreateFunction(new FileListFilter());
+            var csharpCompilerFunc = call.Pipeline.CreateFunction(new CSharpCompilerContext());
 
-            // function to receive reference to operator func
-            var recvFunc = call.Pipeline.CreateFunction(new ReceiveFuncContext());
+            // call file tree to read sources directory
+            var sourcesFileListDirectoryChannel = call.Pipeline.CreateChannel(ChannelSchema.FromClrType<ValueSignal<AbsoluteFile>>());
+            using var sourcesFileListDirectoryEmit = sourcesFileListDirectoryChannel.EmitValue<AbsoluteFile>();
+            sourcesFileListDirectoryEmit.Set(AbsoluteFile.FromPath("C:\\Users\\jhaltom\\temp"));
+            var sourcesFileListFilesChannel = call.Pipeline.CreateChannel(ChannelSchema.FromClrType<SetSignal<AbsoluteFile>>());
+            using var sourcesFileListCall = await fileListFunc.CallAsync([sourcesFileListDirectoryChannel], [sourcesFileListFilesChannel], cancellationToken);
 
-            // channel to send input to receive function
-            var opChan = call.Pipeline.CreateChannel(new ChannelSchema(typeof(FunctionReference)));
-            var xChan = call.Pipeline.CreateChannel(new ChannelSchema(typeof(int)));
-            var yChan = call.Pipeline.CreateChannel(new ChannelSchema(typeof(int)));
+            // filter file tree to only CS files
+            var sourcesFileListFilterGlobChannel = call.Pipeline.CreateChannel(ChannelSchema.FromClrType<ValueSignal<string>>());
+            using var sourcesFileListFilterGlobEmit = sourcesFileListFilterGlobChannel.EmitValue<string>();
+            sourcesFileListFilterGlobEmit.Set("*.cs");
+            var sourcesFileListFilterOutputChannel = call.Pipeline.CreateChannel(ChannelSchema.FromClrType<SetSignal<AbsoluteFile>>());
+            using var sourcesFileTreeFilterCall = await fileFilterFunc.CallAsync([sourcesFileListFilesChannel, sourcesFileListFilterGlobChannel], [sourcesFileListFilterOutputChannel], cancellationToken);
 
-            // channel on which to receive results from op
-            var opResultChan = call.Pipeline.CreateChannel(new ChannelSchema(typeof(int)));
+            // call file tree to read references directory
+            var refsFileListDirectoryChannel = call.Pipeline.CreateChannel(ChannelSchema.FromClrType<ValueSignal<AbsoluteFile>>());
+            using var refsFileListDirectoryEmit = refsFileListDirectoryChannel.EmitValue<AbsoluteFile>();
+            refsFileListDirectoryEmit.Set(AbsoluteFile.FromPath("C:\\Program Files\\dotnet\\packs\\Microsoft.NETCore.App.Ref\\10.0.1\\ref\\net10.0"));
+            var refsFileListFilesChannel = call.Pipeline.CreateChannel(ChannelSchema.FromClrType<SetSignal<AbsoluteFile>>());
+            using var refsFileListCall = await fileListFunc.CallAsync([refsFileListDirectoryChannel], [refsFileListFilesChannel], cancellationToken);
 
-            // initiate call to receive function, which receives the operator, and writes the results to the result chan
-            using var opCall = await recvFunc.CallAsync([opChan, xChan, yChan], [opResultChan], cancellationToken);
+            // filter file tree to only CS files
+            var refsFileListFilterGlobChannel = call.Pipeline.CreateChannel(ChannelSchema.FromClrType<ValueSignal<string>>());
+            using var refsFileListFilterGlobEmit = refsFileListFilterGlobChannel.EmitValue<string>();
+            refsFileListFilterGlobEmit.Set("*.dll");
+            var refsFileListFilterOutputChannel = call.Pipeline.CreateChannel(ChannelSchema.FromClrType<SetSignal<AbsoluteFile>>());
+            using var refsFileTreeFilterCall = await fileFilterFunc.CallAsync([refsFileListFilesChannel, refsFileListFilterGlobChannel], [refsFileListFilterOutputChannel], cancellationToken);
 
-            // writer to send function reference value to receiver
-            using var opWriter = opChan.OpenWrite<FunctionReference>();
+            // run compiler
+            var csharpAssemblyNameChannel = call.Pipeline.CreateChannel(ChannelSchema.FromClrType<ValueSignal<string>>());
+            using var csharpAssemblyNameEmit = csharpAssemblyNameChannel.EmitValue<string>();
+            csharpAssemblyNameEmit.Set("Test");
+            var csharpOutputFileChannel = call.Pipeline.CreateChannel(ChannelSchema.FromClrType<ValueSignal<AbsoluteFile>>());
+            using var csharpOutputFileEmit = csharpOutputFileChannel.EmitValue<AbsoluteFile>();
+            csharpOutputFileEmit.Set(AbsoluteFile.FromPath("C:\\Users\\jhaltom\\Test.dll"));
+            var csharpMessageChannel = call.Pipeline.CreateChannel(ChannelSchema.FromClrType<SequenceSignal<string>>());
+            using var csharpCompilerCall = await csharpCompilerFunc.CallAsync([csharpAssemblyNameChannel, refsFileListFilterOutputChannel, sourcesFileListFilterOutputChannel, csharpOutputFileChannel], [csharpMessageChannel], cancellationToken);
 
-            // channel and writer to write X value
-            using var xWriter = xChan.OpenWrite<int>();
-
-            // channel and writer to write Y value
-            using var yWriter = yChan.OpenWrite<int>();
-
-            // periodically change operator func
-            var fun = Task.Run(async () =>
+            await foreach (var messages in csharpMessageChannel.CollectSequence<string>(cancellationToken))
             {
-                while (cancellationToken.IsCancellationRequested == false)
-                {
-                    opWriter.Reset();
+                Console.WriteLine();
+                Console.WriteLine();
+                foreach (var message in messages)
+                    Console.WriteLine("Message: {0}", message);
+            }
 
-                    if (i++ % 2 == 0)
-                        opWriter.Write(call.Pipeline.GetFunctionReference(call.Pipeline.CreateFunction(new AdderContext())));
-                    else
-                        opWriter.Write(call.Pipeline.GetFunctionReference(call.Pipeline.CreateFunction(new MultiContext())));
+            //int i = 0;
 
-                    await Task.Delay(10000, cancellationToken);
-                }
-            });
+            //// function to receive reference to operator func
+            //var recvFunc = call.Pipeline.CreateFunction(new ReceiveFuncContext());
 
-            var val = Task.Run(async () =>
-            {
-                while (cancellationToken.IsCancellationRequested == false)
-                {
-                    // send new random X value
-                    xWriter.Reset();
-                    xWriter.Write(Random.Shared.Next());
+            //// channel to send input to receive function
+            //var opChan = call.Pipeline.CreateChannel(recvFunc.Schema.Sources[0]);
+            //var xChan = call.Pipeline.CreateChannel(recvFunc.Schema.Sources[1]);
+            //var yChan = call.Pipeline.CreateChannel(recvFunc.Schema.Sources[2]);
 
-                    // send new random Y value
-                    yWriter.Reset();
-                    yWriter.Write(Random.Shared.Next());
+            //// channel on which to receive results from op
+            //var opResultChan = call.Pipeline.CreateChannel(recvFunc.Schema.Outputs[0]);
 
-                    // wait a second before updating value
-                    await Task.Delay(1000, cancellationToken);
-                }
-            });
+            //// initiate call to receive function, which receives the operator, and writes the results to the result chan
+            //using var opCall = await recvFunc.CallAsync([opChan, xChan, yChan], [opResultChan], cancellationToken);
 
-            var ret = Task.Run(async () =>
-            {
-                await foreach (var i in opResultChan.OpenRead<int>(cancellationToken))
-                    System.Console.WriteLine(i);
-            });
+            //// writer to send function reference value to receiver
+            //using var opWriter = opChan.EmitValue<FunctionReference>();
 
-            await Task.WhenAll(fun, val, ret);
+            //// channel and writer to write X value
+            //using var xWriter = xChan.EmitValue<int>();
+
+            //// channel and writer to write Y value
+            //using var yWriter = yChan.EmitValue<int>();
+
+            //// periodically change operator func
+            //var fun = Task.Run(async () =>
+            //{
+            //    while (cancellationToken.IsCancellationRequested == false)
+            //    {
+            //        if (i++ % 2 == 0)
+            //            opWriter.Set(call.Pipeline.GetFunctionReference(call.Pipeline.CreateFunction(new AdderContext())));
+            //        else
+            //            opWriter.Set(call.Pipeline.GetFunctionReference(call.Pipeline.CreateFunction(new MultiContext())));
+
+            //        await Task.Delay(10000, cancellationToken);
+            //    }
+            //});
+
+            //var val = Task.Run(async () =>
+            //{
+            //    while (cancellationToken.IsCancellationRequested == false)
+            //    {
+            //        // send new random X value
+            //        xWriter.Set(Random.Shared.Next());
+
+            //        // send new random Y value
+            //        yWriter.Set(Random.Shared.Next());
+
+            //        // wait a second before updating value
+            //        await Task.Delay(1000, cancellationToken);
+            //    }
+            //});
+
+            //var ret = Task.Run(async () =>
+            //{
+            //    await foreach (var i in opResultChan.CollectValue<int>(cancellationToken))
+            //        System.Console.WriteLine(i);
+            //});
+
+            //await Task.WhenAll(fun, val, ret);
         }
 
     }

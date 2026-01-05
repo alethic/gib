@@ -45,7 +45,7 @@ namespace Gip.Hosting
         /// <inheritdoc />
         public IAsyncEnumerable<T> OpenRead<T>(CancellationToken cancellationToken)
         {
-            if (typeof(T) != Schema.Signal)
+            if (typeof(T) != Schema.Signal.Type)
                 throw new ArgumentException($"Type {typeof(T)} is not compatible with channel schema type {Schema.Signal}.");
 
             return ((IChannelStore<T>)_store).OpenAsync(cancellationToken);
@@ -54,7 +54,7 @@ namespace Gip.Hosting
         /// <inheritdoc />
         public IChannelWriter<T> OpenWrite<T>()
         {
-            if (typeof(T) != Schema.Signal)
+            if (typeof(T) != Schema.Signal.Type)
                 throw new ArgumentException($"Type {typeof(T)} is not compatible with channel schema type {Schema.Signal}.");
 
             lock (this)

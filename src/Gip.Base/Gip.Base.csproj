@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Nito.AsyncEx.Coordination" Version="5.1.2" />
+        <PackageReference Include="System.Interactive.Async" Version="7.0.0" />
+        <PackageReference Include="System.Reactive" Version="6.1.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Gip.Abstractions\Gip.Abstractions.csproj" />
+      <ProjectReference Include="..\Gip.Core\Gip.Core.csproj" />
+    </ItemGroup>
+
+</Project>

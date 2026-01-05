@@ -3,6 +3,8 @@ using System.Text.Json.Serialization;
 
 using Gip.Abstractions.Json;
 
+using ProtoBuf;
+
 namespace Gip.Abstractions
 {
 
@@ -11,7 +13,9 @@ namespace Gip.Abstractions
     /// </summary>
     /// <param name="Uri"></param>
     [JsonConverter(typeof(FunctionReferenceJsonConverter))]
-    public readonly record struct FunctionReference(Uri Uri)
+    [ProtoContract]
+    public readonly record struct FunctionReference(
+        [property: ProtoMember(1)] Uri Uri)
     {
 
         /// <summary>

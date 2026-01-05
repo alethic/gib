@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 
 using Gip.Abstractions;
 using Gip.Core.Clients.Http.Json;
-using Gip.Hosting.AspNetCore.Converters;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -84,10 +83,6 @@ namespace Gip.Hosting.AspNetCore
         static readonly JsonSerializerOptions DefaultJsonOptions = new(JsonSerializerDefaults.Strict)
         {
             WriteIndented = false,
-            Converters =
-            {
-                new SystemTypeJsonConverter()
-            }
         };
 
         /// <summary>
@@ -100,8 +95,8 @@ namespace Gip.Hosting.AspNetCore
         {
             var g = builder.MapGroup(prefix);
             g.MapGet("f/{functionId}", GetFunctionAsync);
-            g.MapPost("f/{functionId}", PostFunctionAsync);
-            g.MapGet("c/{channelId}", GetChannelAsync);
+            g.MapPost("f/{functionId}", CallFunctionAsync);
+            g.MapGet("c/{channelId}", ReadChannelAsync);
             return builder;
         }
 
@@ -133,15 +128,12 @@ namespace Gip.Hosting.AspNetCore
         /// <param name="host"></param>
         /// <param name="functionId"></param>
         /// <returns></returns>
-        static async Task GetFunctionAsync(HttpContext context, Guid functionId, [FromServices] IPipelineContext host)
+        static async Task<IResult> GetFunctionAsync(HttpContext context, Guid functionId, [FromServices] IPipelineContext host)
         {
             if (host.TryGetFunction(functionId, out var func) == false)
-            {
-                context.Response.StatusCode = StatusCodes.Status404NotFound;
-                return;
-            }
+                return Results.NotFound();
 
-            context.Response.StatusCode = StatusCodes.Status200OK;
+            return Results.Ok(func.Schema);
         }
 
         /// <summary>
@@ -153,7 +145,7 @@ namespace Gip.Hosting.AspNetCore
         /// <param name="body"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        static async Task PostFunctionAsync(HttpContext context, Guid functionId, [FromBody] CallRequest body, [FromServices] IPipelineContext pipeline, CancellationToken cancellationToken)
+        static async Task CallFunctionAsync(HttpContext context, Guid functionId, [FromBody] CallRequest body, [FromServices] IPipelineContext pipeline, CancellationToken cancellationToken)
         {
             if (pipeline.TryGetFunction(functionId, out var func) == false)
             {
@@ -213,7 +205,7 @@ namespace Gip.Hosting.AspNetCore
         /// <param name="host"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        static async Task GetChannelAsync(HttpContext context, Guid channelId, [FromServices] IPipelineContext host, CancellationToken cancellationToken)
+        static async Task ReadChannelAsync(HttpContext context, Guid channelId, [FromServices] IPipelineContext host, CancellationToken cancellationToken)
         {
             if (host.TryGetChannel(channelId, out var channel) == false)
             {
@@ -226,7 +218,7 @@ namespace Gip.Hosting.AspNetCore
             context.Response.StatusCode = StatusCodes.Status200OK;
 
             // we use a generic writer so we can invoke the typed write methods
-            await ((IJsonChannelSerializer)Activator.CreateInstance(typeof(JsonChannelSerializer<>).MakeGenericType(channel.Schema.Signal))!).SerializeAsync(context, channel, cancellationToken);
+            await ((IJsonChannelSerializer)Activator.CreateInstance(typeof(JsonChannelSerializer<>).MakeGenericType(channel.Schema.Signal.Type))!).SerializeAsync(context, channel, cancellationToken);
         }
 
     }

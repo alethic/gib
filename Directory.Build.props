@@ -1,6 +1,6 @@
 <Project>
     <PropertyGroup>
-        <LangVersion Condition=" '$(LangVersion)' == '' ">13.0</LangVersion>
+        <LangVersion Condition=" '$(LangVersion)' == '' ">14.0</LangVersion>
     </PropertyGroup>
 
     <ItemGroup>

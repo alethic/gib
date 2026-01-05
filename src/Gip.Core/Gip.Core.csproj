@@ -19,6 +19,8 @@
       <Compile Include="Clients\Http\HttpFunctionClient.cs" />
       <Compile Include="Clients\Http\Json\CallRequest.cs" />
       <Compile Include="Clients\Http\Json\CallResponse.cs" />
+      <Compile Include="Clients\Http\Json\FunctionOutputResponse.cs" />
+      <Compile Include="Clients\Http\Json\FunctionResponse.cs" />
     </ItemGroup>
 
     <ItemGroup>

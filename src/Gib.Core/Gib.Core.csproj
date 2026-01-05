@@ -7,11 +7,10 @@
 
     <ItemGroup>
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.1" />
-        <PackageReference Include="protobuf-net" Version="3.2.56" />
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Gib.Elements.Core\Gib.Elements.Core.csproj" />
+        <ProjectReference Include="..\Gip.Core\Gip.Core.csproj" />
     </ItemGroup>
 
 </Project>

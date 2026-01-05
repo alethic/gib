@@ -39,7 +39,7 @@ namespace Gip.Hosting
             {
                 // each registered function gets a unique key
                 var id = Guid.NewGuid();
-                var hndl = new ChannelImpl(schema, (IChannelStore)Activator.CreateInstance(typeof(DefaultChannelStore<>).MakeGenericType(schema.Signal))!, id);
+                var hndl = new ChannelImpl(schema, (IChannelStore)Activator.CreateInstance(typeof(DefaultChannelStore<>).MakeGenericType(schema.Signal.Type))!, id);
 
                 if (_channelsById.TryAdd(id, hndl) == false)
                     throw new InvalidOperationException();

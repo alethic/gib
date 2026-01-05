@@ -7,8 +7,6 @@ using Gip.Abstractions;
 
 using Microsoft.Extensions.DependencyInjection;
 
-using static System.Runtime.InteropServices.JavaScript.JSType;
-
 namespace Gip.Hosting
 {
 
@@ -57,12 +55,20 @@ namespace Gip.Hosting
             // copy the sources and fill in the missing channels with local channels
             var s = ImmutableArray.CreateBuilder<IReadableChannelHandle>(Schema.Sources.Length);
             for (int i = 0; i < Schema.Sources.Length; i++)
+            {
                 s.Add(sources[i] ?? _pipeline.CreateChannel(Schema.Sources[i]));
+                if (s[i].Schema.Signal.Type != Schema.Sources[i].Signal.Type)
+                    throw new ArgumentException($"Source parameter #{i} CLR type does not match function schema CLR type.", nameof(sources));
+            }
 
             // copy the outputs and fill in the missing channels with local channels
             var o = ImmutableArray.CreateBuilder<IWritableChannelHandle>(Schema.Outputs.Length);
             for (int i = 0; i < Schema.Outputs.Length; i++)
+            {
                 o.Add(outputs[i] ?? _pipeline.CreateChannel(Schema.Outputs[i]));
+                if (o[i].Schema.Signal.Type != Schema.Outputs[i].Signal.Type)
+                    throw new ArgumentException($"Output parameter #{i} CLR type does not match function schema CLR type.", nameof(outputs));
+            }
 
             var context = new CallImpl(_pipeline, _pipeline.ServiceProvider.CreateAsyncScope(), Context, s.MoveToImmutable(), o.MoveToImmutable());
             await context.StartAsync(cancellationToken);

@@ -4,9 +4,17 @@
         <TargetFramework>net10.0</TargetFramework>
         <Nullable>enable</Nullable>
     </PropertyGroup>
+    
+    <ItemGroup>
+        <PackageReference Include="Google.Protobuf" Version="3.33.2" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
+        <PackageReference Include="protobuf-net.Grpc" Version="1.2.2" />
+    </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\Gib.Base\Gib.Base.csproj" />
         <ProjectReference Include="..\Gip.Abstractions\Gip.Abstractions.csproj" />
+        <ProjectReference Include="..\Gip.Base\Gip.Base.csproj" />
         <ProjectReference Include="..\Gip.Core\Gip.Core.csproj" />
         <ProjectReference Include="..\Gip.Hosting.AspNetCore\Gip.Hosting.AspNetCore.csproj" />
         <ProjectReference Include="..\Gip.Hosting\Gip.Hosting.csproj" />

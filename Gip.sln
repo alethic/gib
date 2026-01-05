@@ -33,6 +33,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gib.Base", "src\Gib.Base\Gi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gib.Console", "src\Gib.Console\Gib.Console.csproj", "{5B95652B-EF13-89EA-7F0E-8E2AD4C6E1B4}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gip.Base", "src\Gip.Base\Gip.Base.csproj", "{FEA5F8CD-2DC1-4787-AFFD-65E077D3808A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gib.Core", "src\Gib.Core\Gib.Core.csproj", "{2F54F45F-CC7B-5EB2-9FC8-DC16144D1A66}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -71,6 +75,14 @@ Global
 		{5B95652B-EF13-89EA-7F0E-8E2AD4C6E1B4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5B95652B-EF13-89EA-7F0E-8E2AD4C6E1B4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5B95652B-EF13-89EA-7F0E-8E2AD4C6E1B4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FEA5F8CD-2DC1-4787-AFFD-65E077D3808A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FEA5F8CD-2DC1-4787-AFFD-65E077D3808A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FEA5F8CD-2DC1-4787-AFFD-65E077D3808A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FEA5F8CD-2DC1-4787-AFFD-65E077D3808A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2F54F45F-CC7B-5EB2-9FC8-DC16144D1A66}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2F54F45F-CC7B-5EB2-9FC8-DC16144D1A66}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2F54F45F-CC7B-5EB2-9FC8-DC16144D1A66}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2F54F45F-CC7B-5EB2-9FC8-DC16144D1A66}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

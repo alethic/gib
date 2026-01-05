@@ -2,7 +2,10 @@
 using System.Threading.Tasks;
 
 using Gip.Abstractions;
+using Gip.Base;
 using Gip.Core;
+
+using Google.Protobuf.WellKnownTypes;
 
 namespace Gip.Hosting.AspNetCore.Sample
 {
@@ -13,15 +16,11 @@ namespace Gip.Hosting.AspNetCore.Sample
         /// <summary>
         /// Gets the schema for the function.
         /// </summary>
-        public override FunctionSchema Schema { get; } = new FunctionSchema(
-            [
-                new ChannelSchema(typeof(int)),
-                new ChannelSchema(typeof(int)),
-            ],
-            [
-                new ChannelSchema(typeof(int)),
-            ]
-        );
+        public override FunctionSchema Schema { get; } = FunctionSchema.CreateBuilder()
+            .Source<ValueSignal<int>>()
+            .Source<ValueSignal<int>>()
+            .Output<ValueSignal<int>>()
+            .Build();
 
         /// <summary>
         /// Handles an individual call.

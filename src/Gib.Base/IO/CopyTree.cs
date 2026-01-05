@@ -1,163 +1,165 @@
-﻿using System.Collections.Immutable;
+﻿using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Gib.Base.Collections;
 using Gib.Core;
-using Gib.Core.Elements;
+
+using Gip.Abstractions;
+using Gip.Base;
+using Gip.Base.Collections;
+using Gip.Core;
 
 namespace Gib.Base.IO
 {
 
     [Element]
-    public class CopyTree : ElementBase, IElementWithProxy<ICopyTree>
+    public class CopyTree : FunctionContextBase
     {
 
         /// <summary>
-        /// Initializes a new instance.
+        /// Gets the schema for the function.
         /// </summary>
-        /// <param name="context"></param>
-        public CopyTree(IElementContext context) :
-            base(context)
+        public override FunctionSchema Schema { get; } = FunctionSchema.CreateBuilder()
+            .Source<ValueSignal<AbsoluteFile>>()
+            .Source<SetSignal<RelativeFile>>()
+            .Output<SetSignal<RelativeFile>>()
+            .Output<SequenceSignal<string>>()
+            .Build();
+
+        /// <summary>
+        /// Handles an individual call.
+        /// </summary>
+        /// <param name="call"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public override async Task CallAsync(ICallContext call, CancellationToken cancellationToken)
         {
+            var copiedFiles = call.Outputs[0].EmitSet<RelativeFile>();
 
-        }
+            // maintain state about files we have copied
+            var copiedFilesSet = new Dictionary<string, RelativeFile>();
 
-        /// <summary>
-        /// Directory to watch.
-        /// </summary>
-        [Property("destination")]
-        public required DirectoryPath Destination { get; set; }
-
-        /// <summary>
-        /// Set of files to be copied.
-        /// </summary>
-        [Property("sourceFiles")]
-        public required IStreamConsumer<SetEvent<RelativeFile>> SourceFiles { get; set; }
-
-        /// <summary>
-        /// Set of files that have been copied.
-        /// </summary>
-        [Property("copiedFiles")]
-        public IStreamProducer<SetEvent<RelativeFile>>? CopiedFiles { get; set; }
-
-        /// <inheritdoc />
-        public override async Task ExecuteAsync(CancellationToken cancellationToken)
-        {
-            if (CopiedFiles is not null)
+            await foreach (var destination in call.Sources[0].CollectValue<AbsoluteFile>(cancellationToken))
             {
-                // we are replaying all of the files
-                await CopiedFiles.ResetAsync();
-
-                // listen to source file events
-                await SourceFiles.Stream(async @event =>
+                // delete all files recorded in copied files set initially
                 {
-                    switch (@event)
+                    // remove all recorded files
+                    foreach (var removedFile in copiedFilesSet.Values)
+                        if (File.Exists(removedFile.AbsolutePath))
+                            File.Delete(removedFile.AbsolutePath);
+
+                    // clear our record
+                    copiedFilesSet.Clear();
+
+                    // send notice of files cleared
+                    copiedFiles.Clear();
+                }
+
+                // read from the feed of source files
+                await foreach (var signal in call.Sources[1].OpenRead<SetSignal<RelativeFile>>(cancellationToken))
+                {
+                    switch (signal)
                     {
-                        case SetAddEvent<RelativeFile> addEvent:
+                        case SetAddSignal<RelativeFile> addSignal:
                             {
                                 // copy file to new path
-                                var newPath = Path.Combine(Destination.AbsolutePath, addEvent.Item.RelativePath);
-                                File.Copy(addEvent.Item.AbsolutePath, newPath);
+                                var newPath = Path.Combine(destination.AbsolutePath, addSignal.Item.RelativePath);
+                                File.Copy(addSignal.Item.AbsolutePath, newPath);
 
-                                // add new copied item
-                                await CopiedFiles.SendAsync(new SetAddEvent<RelativeFile>(new RelativeFile(newPath, addEvent.Item.RelativePath)));
+                                // record new copied item
+                                var newFile = RelativeFile.FromPath(newPath, addSignal.Item.RelativePath);
+                                copiedFilesSet.Add(newFile.AbsolutePath, newFile);
+
+                                // send notice of new file
+                                copiedFiles.Add(newFile);
 
                                 break;
                             }
-                        case SetAddManyEvent<RelativeFile> addManyEvent:
+                        case SetAddManySignal<RelativeFile> addManySignal:
                             {
-                                var copiedFiles = ImmutableHashSet.CreateBuilder<RelativeFile>();
+                                var newFiles = ImmutableArray.CreateBuilder<RelativeFile>();
 
                                 // copy file to new path
-                                foreach (var file in addManyEvent.Items)
+                                foreach (var addedFile in addManySignal.Items)
                                 {
-                                    var newPath = Path.Combine(Destination.AbsolutePath, file.RelativePath);
-                                    File.Copy(file.AbsolutePath, newPath);
-                                    copiedFiles.Add(new RelativeFile(newPath, file.RelativePath));
+                                    // copy file to new path
+                                    var newPath = Path.Combine(destination.AbsolutePath, addedFile.RelativePath);
+                                    var newFile = RelativeFile.FromPath(newPath, addedFile.RelativePath);
+                                    File.Copy(addedFile.AbsolutePath, newFile.AbsolutePath);
+
+                                    // record new copied item
+                                    copiedFilesSet.Add(newFile.AbsolutePath, newFile);
+
+                                    // send notice of new file
+                                    newFiles.Add(newFile);
                                 }
 
-                                await CopiedFiles.SendAsync(new SetAddManyEvent<RelativeFile>(copiedFiles.ToImmutable()));
+                                // send notice of new files
+                                copiedFiles.AddRange(newFiles.MoveToImmutable());
 
                                 break;
                             }
-                        case SetRemoveEvent<RelativeFile> removeEvent:
+                        case SetRemoveSignal<RelativeFile> removeSignal:
                             {
-                                var oldPath = Path.Combine(Destination.AbsolutePath, removeEvent.Item.RelativePath);
-                                if (File.Exists(oldPath))
-                                    File.Delete(oldPath);
+                                var oldPath = Path.Combine(destination.AbsolutePath, removeSignal.Item.RelativePath);
+                                if (copiedFilesSet.TryGetValue(oldPath, out var oldFile))
+                                {
+                                    if (File.Exists(oldFile.AbsolutePath))
+                                        File.Delete(oldFile.AbsolutePath);
 
-                                await CopiedFiles.SendAsync(new SetRemoveEvent<RelativeFile>(new RelativeFile(oldPath, removeEvent.Item.RelativePath)));
+                                    // record new deleted item
+                                    copiedFilesSet.Remove(oldPath);
+
+                                    // send notice of old file
+                                    copiedFiles.Remove(oldFile);
+                                }
 
                                 break;
                             }
-                        case SetRemoveManyEvent<RelativeFile> removeManyEvent:
+                        case SetRemoveManySignal<RelativeFile> removeManySignal:
                             {
-                                var removedFiles = ImmutableHashSet.CreateBuilder<RelativeFile>();
+                                var oldFiles = ImmutableArray.CreateBuilder<RelativeFile>();
 
-                                foreach (var file in removeManyEvent.Items)
+                                foreach (var removedFile in removeManySignal.Items)
                                 {
-                                    var oldPath = Path.Combine(Destination.AbsolutePath, file.RelativePath);
-                                    if (File.Exists(oldPath))
-                                        File.Delete(oldPath);
+                                    var oldPath = Path.Combine(destination.AbsolutePath, removedFile.RelativePath);
+                                    if (copiedFilesSet.TryGetValue(oldPath, out var oldFile))
+                                    {
+                                        if (File.Exists(oldFile.AbsolutePath))
+                                            File.Delete(oldFile.AbsolutePath);
 
-                                    removedFiles.Add(new RelativeFile(oldPath, file.RelativePath));
+                                        // record new deleted item
+                                        copiedFilesSet.Remove(oldPath);
+
+                                        // send notice of old file
+                                        oldFiles.Add(oldFile);
+                                    }
                                 }
 
-                                await CopiedFiles.SendAsync(new SetRemoveManyEvent<RelativeFile>(removedFiles.ToImmutable()));
+                                // send notice of old files
+                                copiedFiles.RemoveRange(oldFiles.MoveToImmutable());
+
+                                break;
+                            }
+                        case SetClearSignal<RelativeFile> clearSignal:
+                            {
+                                // remove all recorded files
+                                foreach (var removedFile in copiedFilesSet.Values)
+                                    if (File.Exists(removedFile.AbsolutePath))
+                                        File.Delete(removedFile.AbsolutePath);
+
+                                // clear our record
+                                copiedFilesSet.Clear();
+
+                                // send notice of files cleared
+                                copiedFiles.Clear();
 
                                 break;
                             }
                     }
-                }, cancellationToken);
-            }
-            else
-            {
-                // listen to source file events
-                await SourceFiles.Stream(async @event =>
-                {
-                    switch (@event)
-                    {
-                        case SetAddEvent<RelativeFile> addEvent:
-                            {
-                                // copy file to new path
-                                var newPath = Path.Combine(Destination.AbsolutePath, addEvent.Item.RelativePath);
-                                File.Copy(addEvent.Item.AbsolutePath, newPath);
-                                break;
-                            }
-                        case SetAddManyEvent<RelativeFile> addManyEvent:
-                            {
-                                // copy file to new path
-                                foreach (var file in addManyEvent.Items)
-                                {
-                                    var newPath = Path.Combine(Destination.AbsolutePath, file.RelativePath);
-                                    File.Copy(file.AbsolutePath, newPath);
-                                }
-
-                                break;
-                            }
-                        case SetRemoveEvent<RelativeFile> removeEvent:
-                            {
-                                var oldPath = Path.Combine(Destination.AbsolutePath, removeEvent.Item.RelativePath);
-                                if (File.Exists(oldPath))
-                                    File.Delete(oldPath);
-
-                                break;
-                            }
-                        case SetRemoveManyEvent<RelativeFile> removeManyEvent:
-                            {
-                                foreach (var file in removeManyEvent.Items)
-                                {
-                                    var oldPath = Path.Combine(Destination.AbsolutePath, file.RelativePath);
-                                    if (File.Exists(oldPath))
-                                        File.Delete(oldPath);
-                                }
-
-                                break;
-                            }
-                    }
-                }, cancellationToken);
+                }
             }
         }
 

@@ -1,15 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.IO;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 
-using Gib.Base.Collections;
-using Gib.Core;
-using Gib.Core.Elements;
+using Gip.Abstractions;
+using Gip.Base;
+using Gip.Base.Collections;
+using Gip.Core;
 
 namespace Gib.Base.IO
 {
@@ -17,41 +17,32 @@ namespace Gib.Base.IO
     /// <summary>
     /// This elements reads from a source directory and returns the set of files.
     /// </summary>
-    [Element]
-    public class FileTree : ElementBase
+    public class FileTree : FunctionContextBase
     {
 
         /// <summary>
-        /// Initializes a new instance.
+        /// Gets the schema for the function.
         /// </summary>
-        /// <param name="context"></param>
-        public FileTree(IElementContext context) :
-            base(context)
-        {
-
-        }
+        public override FunctionSchema Schema { get; } = FunctionSchema.CreateBuilder()
+            .Source<ValueSignal<AbsoluteFile>>()
+            .Output<SetSignal<RelativeFile>>()
+            .Build();
 
         /// <summary>
-        /// Directory to watch.
+        /// Handles an individual call.
         /// </summary>
-        [Property("directory")]
-        public required DirectoryPath Directory { get; set; }
-
-        /// <summary>
-        /// Set of files in the directory.
-        /// </summary>
-        [Property("files")]
-        public required IStreamProducer<SetEvent<RelativeFile>> Files { get; set; }
-
-        /// <inheritdoc />
-        public override async Task ExecuteAsync(CancellationToken cancellationToken)
+        /// <param name="call"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public override async Task CallAsync(ICallContext call, CancellationToken cancellationToken)
         {
-            try
+            using var files = call.Outputs[0].EmitSet<RelativeFile>();
+
+            await foreach (var dir in call.Sources[0].CollectValue<AbsoluteFile>(cancellationToken))
             {
-                // we will be replaying all of the files
-                await Files.ResetAsync();
+                files.Clear();
 
-                if (System.IO.Directory.Exists(Directory.AbsolutePath))
+                if (Directory.Exists(dir.AbsolutePath))
                 {
                     // local map to model changes
                     var state = new Dictionary<string, RelativeFile>();
@@ -61,7 +52,7 @@ namespace Gib.Base.IO
                     var writer = channel.Writer;
                     var reader = channel.Reader;
 
-                    using var watcher = new FileSystemWatcher(Directory.AbsolutePath);
+                    using var watcher = new FileSystemWatcher(dir.AbsolutePath);
                     watcher.NotifyFilter = NotifyFilters.Attributes | NotifyFilters.DirectoryName | NotifyFilters.FileName | NotifyFilters.CreationTime | NotifyFilters.LastAccess | NotifyFilters.LastWrite | NotifyFilters.Size;
                     watcher.IncludeSubdirectories = true;
                     watcher.Changed += (_, a) => writer.TryWrite(a);
@@ -72,15 +63,15 @@ namespace Gib.Base.IO
                     watcher.EnableRaisingEvents = true;
 
                     // fill up a local hashset with the items as they stand now
-                    foreach (var i in System.IO.Directory.EnumerateFiles(Directory.AbsolutePath, "*", new EnumerationOptions() { RecurseSubdirectories = true }))
+                    foreach (var i in Directory.EnumerateFiles(dir.AbsolutePath, "*", new EnumerationOptions() { RecurseSubdirectories = true }))
                     {
                         var f = new FileInfo(i);
                         if (f.Exists)
-                            state[i] = new RelativeFile(i, Path.GetRelativePath(Directory.AbsolutePath, i));
+                            state[i] = RelativeFile.FromPath(i, Path.GetRelativePath(dir.AbsolutePath, i));
                     }
 
                     // signal the addition of all existing items
-                    await Files.SendAsync(new SetAddManyEvent<RelativeFile>(state.Values.ToImmutableHashSet()));
+                    files.AddRange(state.Values);
 
                     // read until we are cancelled
                     await foreach (var e in reader.ReadAllAsync(cancellationToken))
@@ -92,15 +83,15 @@ namespace Gib.Base.IO
                                 {
                                     // if the file was removed from the old path
                                     if (state.Remove(renamed.OldFullPath, out var relativeFile))
-                                        await Files.SendAsync(new SetRemoveEvent<RelativeFile>(relativeFile));
+                                        files.Remove(relativeFile);
 
                                     // add file at new path
                                     var file = new FileInfo(renamed.FullPath);
                                     if (file.Exists)
                                     {
-                                        relativeFile = new RelativeFile(file.FullName, Path.GetRelativePath(Directory.AbsolutePath, file.FullName));
+                                        relativeFile = RelativeFile.FromPath(file.FullName, Path.GetRelativePath(dir.AbsolutePath, file.FullName));
                                         if (state.TryAdd(file.FullName, relativeFile))
-                                            await Files.SendAsync(new SetAddEvent<RelativeFile>(relativeFile));
+                                            files.Add(relativeFile);
                                     }
                                 }
 
@@ -116,14 +107,14 @@ namespace Gib.Base.IO
                                                 var file = new FileInfo(args.FullPath);
                                                 if (file.Exists)
                                                 {
-                                                    var relativeFile = new RelativeFile(file.FullName, Path.GetRelativePath(Directory.AbsolutePath, file.FullName));
+                                                    var relativeFile = RelativeFile.FromPath(file.FullName, Path.GetRelativePath(dir.AbsolutePath, file.FullName));
                                                     if (state.TryAdd(file.FullName, relativeFile))
-                                                        await Files.SendAsync(new SetAddEvent<RelativeFile>(relativeFile));
+                                                        files.Add(relativeFile);
                                                 }
                                                 else
                                                 {
                                                     if (state.Remove(file.FullName, out var relativeFile))
-                                                        await Files.SendAsync(new SetRemoveEvent<RelativeFile>(relativeFile));
+                                                        files.Remove(relativeFile);
                                                 }
                                             }
                                             break;
@@ -132,7 +123,7 @@ namespace Gib.Base.IO
                                                 var file = new FileInfo(args.FullPath);
                                                 if (file.Exists == false)
                                                     if (state.Remove(file.FullName, out var relativeFile))
-                                                        await Files.SendAsync(new SetRemoveEvent<RelativeFile>(relativeFile));
+                                                        files.Remove(relativeFile);
                                             }
                                             break;
                                         case WatcherChangeTypes.Changed:
@@ -141,16 +132,16 @@ namespace Gib.Base.IO
                                                 if (file.Exists)
                                                 {
                                                     if (state.Remove(file.FullName, out var relativeFile))
-                                                        await Files.SendAsync(new SetRemoveEvent<RelativeFile>(relativeFile));
+                                                        files.Remove(relativeFile);
 
-                                                    relativeFile = new RelativeFile(file.FullName, Path.GetRelativePath(Directory.AbsolutePath, file.FullName));
+                                                    relativeFile = RelativeFile.FromPath(file.FullName, Path.GetRelativePath(dir.AbsolutePath, file.FullName));
                                                     if (state.TryAdd(file.FullName, relativeFile))
-                                                        await Files.SendAsync(new SetAddEvent<RelativeFile>(relativeFile));
+                                                        files.Add(relativeFile);
                                                 }
                                                 else
                                                 {
                                                     if (state.Remove(file.FullName, out var relativeFile))
-                                                        await Files.SendAsync(new SetRemoveEvent<RelativeFile>(relativeFile));
+                                                        files.Remove(relativeFile);
                                                 }
                                             }
 
@@ -159,7 +150,9 @@ namespace Gib.Base.IO
                                             throw new InvalidOperationException();
                                     }
                                 }
+
                                 break;
+
                             case ErrorEventArgs exception:
                                 ExceptionDispatchInfo.Capture(exception.GetException()).Throw();
                                 throw null;
@@ -168,10 +161,10 @@ namespace Gib.Base.IO
                         }
                     }
                 }
-            }
-            catch (OperationCanceledException)
-            {
-                // ignore
+                else
+                {
+                    files.Clear();
+                }
             }
         }
 

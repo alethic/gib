@@ -3,11 +3,15 @@ using System.Text.Json.Serialization;
 
 using Gip.Abstractions.Json;
 
+using ProtoBuf;
+
 namespace Gip.Abstractions
 {
 
     [JsonConverter(typeof(ChannelReferenceJsonConverter))]
-    public readonly record struct ChannelReference(Uri Uri)
+    [ProtoContract]
+    public readonly record struct ChannelReference(
+        [property: ProtoMember(1)] Uri Uri)
     {
 
         /// <summary>
