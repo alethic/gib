@@ -2,18 +2,17 @@
 using System.Linq;
 using System.Threading.Tasks;
 
-using Gip.Abstractions;
-using Gip.Hosting;
+using Gip.Core;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 using Nito.AsyncEx;
 
-namespace Gip.Tests
+namespace Gip.Tests.Core
 {
 
     [TestClass]
-    public class ChannelStoreTests
+    public class LocalChannelTests
     {
 
         public TestContext TestContext { get; set; }
@@ -22,15 +21,15 @@ namespace Gip.Tests
         public async Task CanEnumerateSingleBlockComplete()
         {
             var h = HashCode.Combine(1, 2, 3, 4);
-            var c = new InMemoryChannelStore();
-            c.Store(1);
-            c.Store(2);
-            c.Store(3);
-            c.Store(4);
+            var c = new LocalChannel<int>();
+            c.Write(1);
+            c.Write(2);
+            c.Write(3);
+            c.Write(4);
             c.Complete();
 
             var s = new HashCode();
-            await foreach (var i in c.OpenAsync<int>(TestContext.CancellationToken))
+            await foreach (var i in c.WithCancellation(TestContext.CancellationToken))
                 s.Add(i);
 
             Assert.AreEqual(h, s.ToHashCode());
@@ -45,15 +44,15 @@ namespace Gip.Tests
             foreach (var i in l)
                 h.Add(i);
 
-            var c = new InMemoryChannelStore();
+            var c = new LocalChannel<int>();
 
             foreach (var i in l)
-                c.Store(i);
+                c.Write(i);
 
             c.Complete();
 
             var s = new HashCode();
-            await foreach (var i in c.OpenAsync<int>(TestContext.CancellationToken))
+            await foreach (var i in c.WithCancellation(TestContext.CancellationToken))
                 s.Add(i);
 
             Assert.AreEqual(h.ToHashCode(), s.ToHashCode());
@@ -62,14 +61,13 @@ namespace Gip.Tests
         [TestMethod]
         public async Task CanEnumerateSingleBlockCompleteAsync()
         {
-            var c = new InMemoryChannelStore();
+            var c = new LocalChannel<int>();
             var h1 = new AsyncManualResetEvent();
             var h2 = new AsyncManualResetEvent();
             var i = 0;
             var t = Task.Run(async () =>
             {
-                var l = c.OpenAsync<int>(TestContext.CancellationToken);
-                var e = l.GetAsyncEnumerator(TestContext.CancellationToken);
+                var e = c.GetAsyncEnumerator(TestContext.CancellationToken);
 
                 Console.WriteLine("Waiting h2");
                 await h2.WaitAsync();
@@ -111,28 +109,28 @@ namespace Gip.Tests
                 h2.Reset();
             });
 
-            c.Store(1);
+            c.Write(1);
             h2.Set();
             Console.WriteLine("Waiting h1");
             await h1.WaitAsync();
             h1.Reset();
             Assert.AreEqual(1, i);
 
-            c.Store(2);
+            c.Write(2);
             h2.Set();
             Console.WriteLine("Waiting h1");
             await h1.WaitAsync();
             h1.Reset();
             Assert.AreEqual(2, i);
 
-            c.Store(3);
+            c.Write(3);
             h2.Set();
             Console.WriteLine("Waiting h1");
             await h1.WaitAsync();
             h1.Reset();
             Assert.AreEqual(3, i);
 
-            c.Store(4);
+            c.Write(4);
             h2.Set();
             Console.WriteLine("Waiting h1");
             await h1.WaitAsync();

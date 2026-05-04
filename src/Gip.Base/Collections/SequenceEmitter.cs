@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 
 using Gip.Abstractions;
 
@@ -26,29 +27,34 @@ namespace Gip.Base.Collections
             _writer.Write(new SequenceAppendSignal<T>(item));
         }
 
-        public void AppendMany(ImmutableArray<T> items)
+        public void AppendRange(ReadOnlyMemory<T> items)
         {
             _writer.Write(new SequenceAppendManySignal<T>(items));
         }
 
-        public void AppendMany(IReadOnlyList<T> items)
+        public void AppendRange(ImmutableArray<T> items)
         {
-            _writer.Write(new SequenceAppendManySignal<T>([.. items]));
+            _writer.Write(new SequenceAppendManySignal<T>(items.AsMemory()));
         }
 
-        public void AppendMany(IImmutableList<T> items)
+        public void AppendRange(IReadOnlyList<T> items)
         {
-            _writer.Write(new SequenceAppendManySignal<T>([.. items]));
+            _writer.Write(new SequenceAppendManySignal<T>(items.ToArray().AsMemory()));
         }
 
-        public void AppendMany(params T[] items)
+        public void AppendRange(IImmutableList<T> items)
         {
-            _writer.Write(new SequenceAppendManySignal<T>([.. items]));
+            _writer.Write(new SequenceAppendManySignal<T>(items.ToArray().AsMemory()));
         }
 
-        public void AppendMany(params ReadOnlySpan<T> items)
+        public void AppendRange(params T[] items)
         {
-            _writer.Write(new SequenceAppendManySignal<T>(items.ToImmutableArray()));
+            _writer.Write(new SequenceAppendManySignal<T>(items.AsMemory()));
+        }
+
+        public void AppendRange(params ReadOnlySpan<T> items)
+        {
+            _writer.Write(new SequenceAppendManySignal<T>(items.ToArray().AsMemory()));
         }
 
         public void Clear()

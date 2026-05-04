@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Gip.Abstractions;
+using Gip.Abstractions.Clients;
 using Gip.Core.Clients.Http.Json;
 
 using Microsoft.AspNetCore.Builder;
@@ -29,7 +30,7 @@ namespace Gip.Hosting.AspNetCore
         interface IJsonChannelSerializer
         {
 
-            ValueTask SerializeAsync(HttpContext context, IReadableChannelHandle channel, CancellationToken cancellationToken);
+            ValueTask SerializeAsync(HttpContext context, IPipelineContext pipeline, IReadableChannelHandle channel, CancellationToken cancellationToken);
 
         }
 
@@ -40,12 +41,25 @@ namespace Gip.Hosting.AspNetCore
         class JsonChannelSerializer<T> : IJsonChannelSerializer
         {
 
-            public async ValueTask SerializeAsync(HttpContext context, IReadableChannelHandle channel, CancellationToken cancellationToken)
+            public async ValueTask SerializeAsync(HttpContext context, IPipelineContext pipeline, IReadableChannelHandle channel, CancellationToken cancellationToken)
             {
-                await foreach (var item in channel.OpenRead<T>(cancellationToken))
+                await foreach (var reader in channel.Reader<T>(cancellationToken))
                 {
-                    await JsonSerializer.SerializeAsync(context.Response.Body, item, DefaultJsonOptions, cancellationToken);
-                    await context.Response.WriteAsync("\n", cancellationToken);
+                    if (reader.Channel != channel)
+                    {
+                        // we have been redirected to a different channel
+                        await JsonSerializer.SerializeAsync(context.Response.Body, ChannelEvent<T>.FromRedirect(pipeline.GetChannelUri(reader.Channel)), DefaultJsonOptions, cancellationToken);
+                        await context.Response.WriteAsync("\n", cancellationToken);
+                    }
+                    else
+                    {
+                        // read the signals from this channel
+                        await foreach (var signal in reader)
+                        {
+                            await JsonSerializer.SerializeAsync(context.Response.Body, ChannelEvent<T>.FromSignal(signal), DefaultJsonOptions, cancellationToken);
+                            await context.Response.WriteAsync("\n", cancellationToken);
+                        }
+                    }
                 }
             }
 
@@ -70,7 +84,7 @@ namespace Gip.Hosting.AspNetCore
 
             public void Deserialize(JsonNode[] nodes, IWritableChannelHandle channel, CancellationToken cancellationToken)
             {
-                using var writer = channel.OpenWrite<T>();
+                using var writer = channel.Writer<T>();
                 foreach (var node in nodes)
                     writer.Write(JsonSerializer.Deserialize<T>(node, DefaultJsonOptions) ?? throw new InvalidOperationException());
             }
@@ -163,12 +177,8 @@ namespace Gip.Hosting.AspNetCore
                 throw new NotImplementedException();
             }
 
-            var outputs = ImmutableArray.CreateBuilder<IWritableChannelHandle?>(func.Schema.Outputs.Length);
-            for (int i = 0; i < func.Schema.Outputs.Length; i++)
-                sources.Add(null);
-
             // initiates the call
-            await using var call = await func.CallAsync(sources.MoveToImmutable(), outputs.MoveToImmutable(), cancellationToken);
+            await using var call = await func.CallAsync(sources.MoveToImmutable(), cancellationToken);
 
             // collect the output parameters
             var outputUris = ImmutableArray.CreateBuilder<Uri>(call.Outputs.Length);
@@ -202,12 +212,12 @@ namespace Gip.Hosting.AspNetCore
         /// </summary>
         /// <param name="context"></param>
         /// <param name="channelId"></param>
-        /// <param name="host"></param>
+        /// <param name="pipeline"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        static async Task ReadChannelAsync(HttpContext context, Guid channelId, [FromServices] IPipelineContext host, CancellationToken cancellationToken)
+        static async Task ReadChannelAsync(HttpContext context, Guid channelId, [FromServices] IPipelineContext pipeline, CancellationToken cancellationToken)
         {
-            if (host.TryGetChannel(channelId, out var channel) == false)
+            if (pipeline.TryGetChannel(channelId, out var channel) == false)
             {
                 context.Response.StatusCode = StatusCodes.Status404NotFound;
                 return;
@@ -218,7 +228,7 @@ namespace Gip.Hosting.AspNetCore
             context.Response.StatusCode = StatusCodes.Status200OK;
 
             // we use a generic writer so we can invoke the typed write methods
-            await ((IJsonChannelSerializer)Activator.CreateInstance(typeof(JsonChannelSerializer<>).MakeGenericType(channel.Schema.Signal.Type))!).SerializeAsync(context, channel, cancellationToken);
+            await ((IJsonChannelSerializer)Activator.CreateInstance(typeof(JsonChannelSerializer<>).MakeGenericType(channel.Schema.Signal.Type))!).SerializeAsync(context, pipeline, channel, cancellationToken);
         }
 
     }

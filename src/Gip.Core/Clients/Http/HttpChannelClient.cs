@@ -10,7 +10,7 @@ using Gip.Abstractions.Clients;
 namespace Gip.Core.Clients.Http
 {
 
-    public sealed class HttpChannelClient<T> : IChannelClient<T>
+    public sealed class HttpChannelClient<TSignal> : IChannelClient<TSignal>
     {
 
         readonly HttpClient _http;
@@ -19,7 +19,9 @@ namespace Gip.Core.Clients.Http
         /// <summary>
         /// Initializes a new instance.
         /// </summary>
+        /// <param name="http"></param>
         /// <param name="uri"></param>
+        /// <param name="clients"></param>
         public HttpChannelClient(HttpClient http, Uri uri)
         {
             _http = http;
@@ -27,10 +29,11 @@ namespace Gip.Core.Clients.Http
         }
 
         /// <inheritdoc />
-        public async IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
+        public async IAsyncEnumerator<ChannelEvent<TSignal>> GetAsyncEnumerator(CancellationToken cancellationToken = default)
         {
-            await foreach (var i in _http.GetFromJsonAsAsyncEnumerable<T>(_uri, cancellationToken))
-                yield return i ?? throw new InvalidOperationException();
+            await foreach (var evnt in _http.GetFromJsonAsAsyncEnumerable<ChannelEvent<TSignal>>(_uri, cancellationToken))
+                if (evnt is not null)
+                    yield return evnt;
         }
 
         /// <inheritdoc />

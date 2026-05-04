@@ -17,14 +17,14 @@ namespace Gip.Abstractions
     /// <summary>
     /// Represents an interface to a local channels storage.
     /// </summary>
-    public interface IChannelStore<T> : IChannelStore
+    public interface IChannelStore<TSignal> : IChannelStore
     {
 
         /// <summary>
         /// Stores a new signal in the channel.
         /// </summary>
         /// <param name="signal"></param>
-        void Store(T signal);
+        void Store(TSignal signal);
 
         /// <summary>
         /// Resets the state of the channel.
@@ -40,7 +40,7 @@ namespace Gip.Abstractions
         /// Opens the channel for reading. Existing signals should be made available to the reader, as well as a feed of new signals.
         /// </summary>
         /// <returns></returns>
-        IAsyncEnumerable<T> OpenAsync(CancellationToken cancellationToken);
+        IAsyncEnumerable<TSignal> OpenAsync(CancellationToken cancellationToken);
 
     }
 

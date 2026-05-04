@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using System.Threading.Tasks;
 
 using Gip.Abstractions;
 using Gip.Abstractions.Clients;
@@ -35,14 +34,12 @@ namespace Gip.Hosting
         public ChannelSchema Schema => _schema;
 
         /// <inheritdoc />
-        public Uri Uri=> _uri;
+        public Uri Uri => _uri;
 
         /// <inheritdoc />
-        public async IAsyncEnumerable<T> OpenRead<T>([EnumeratorCancellation] CancellationToken cancellationToken)
+        public IAsyncEnumerable<IChannelReader<TSignal>> Reader<TSignal>([EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            await using var c = _clients.GetChannel<T>(_uri);
-            await foreach (var i in c.WithCancellation(cancellationToken))
-                yield return i ?? throw new InvalidOperationException();
+            throw new NotImplementedException();
         }
 
     }

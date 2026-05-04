@@ -44,72 +44,76 @@ namespace Gib.Base.IO
                 var matcher = new Matcher();
                 matcher.AddInclude(glob);
 
-                // proxy the set signals across, filtering items out
-                await foreach (var signal in call.Sources[0].OpenRead<SetSignal<AbsoluteFile>>(cancellationToken))
+                await foreach (var reader in call.Sources[0].Reader<SetSignal<AbsoluteFile>>(cancellationToken))
                 {
-                    switch (signal)
+                    outputs.Clear();
+
+                    await foreach (var signal in reader)
                     {
-                        case SetAddSignal<AbsoluteFile> addSignal:
-                            {
-                                var rootDir = Path.GetDirectoryName(addSignal.Item.AbsolutePath);
-                                if (matcher.Match(rootDir!, Path.GetFileName(addSignal.Item.AbsolutePath)).HasMatches)
-                                    outputs.Add(addSignal.Item);
-
-                                break;
-                            }
-                        case SetAddManySignal<AbsoluteFile> addManySignal:
-                            {
-                                var filteredFiles = ImmutableArray.CreateBuilder<AbsoluteFile>();
-
-                                foreach (var file in addManySignal.Items)
+                        switch (signal)
+                        {
+                            case SetAddSignal<AbsoluteFile> addSignal:
                                 {
-                                    var rootDir = Path.GetDirectoryName(file.AbsolutePath);
-                                    if (matcher.Match(rootDir!, Path.GetFileName(file.AbsolutePath)).HasMatches)
-                                        filteredFiles.Add(file);
+                                    var rootDir = Path.GetDirectoryName(addSignal.Item.AbsolutePath);
+                                    if (matcher.Match(rootDir!, Path.GetFileName(addSignal.Item.AbsolutePath)).HasMatches)
+                                        outputs.Add(addSignal.Item);
+
+                                    break;
                                 }
-
-                                if (filteredFiles.Count == 1)
-                                    outputs.Add(filteredFiles[0]);
-                                else if (filteredFiles.Count >= 2)
-                                    outputs.AddRange(filteredFiles.DrainToImmutable());
-
-                                break;
-                            }
-                        case SetRemoveSignal<AbsoluteFile> removeSignal:
-                            {
-                                var rootDir = Path.GetDirectoryName(removeSignal.Item.AbsolutePath);
-                                if (matcher.Match(rootDir!, Path.GetFileName(removeSignal.Item.AbsolutePath)).HasMatches)
-                                    outputs.Remove(removeSignal.Item);
-
-                                break;
-                            }
-                        case SetRemoveManySignal<AbsoluteFile> removeManyEvent:
-                            {
-                                var filteredFiles = ImmutableArray.CreateBuilder<AbsoluteFile>();
-
-                                foreach (var file in removeManyEvent.Items)
+                            case SetAddManySignal<AbsoluteFile> addManySignal:
                                 {
-                                    var rootDir = Path.GetDirectoryName(file.AbsolutePath);
-                                    if (matcher.Match(rootDir!, Path.GetFileName(file.AbsolutePath)).HasMatches)
-                                        filteredFiles.Add(file);
+                                    var filteredFiles = ImmutableArray.CreateBuilder<AbsoluteFile>();
+
+                                    foreach (var file in addManySignal.Items)
+                                    {
+                                        var rootDir = Path.GetDirectoryName(file.AbsolutePath);
+                                        if (matcher.Match(rootDir!, Path.GetFileName(file.AbsolutePath)).HasMatches)
+                                            filteredFiles.Add(file);
+                                    }
+
+                                    if (filteredFiles.Count == 1)
+                                        outputs.Add(filteredFiles[0]);
+                                    else if (filteredFiles.Count >= 2)
+                                        outputs.AddRange(filteredFiles.DrainToImmutable());
+
+                                    break;
                                 }
+                            case SetRemoveSignal<AbsoluteFile> removeSignal:
+                                {
+                                    var rootDir = Path.GetDirectoryName(removeSignal.Item.AbsolutePath);
+                                    if (matcher.Match(rootDir!, Path.GetFileName(removeSignal.Item.AbsolutePath)).HasMatches)
+                                        outputs.Remove(removeSignal.Item);
 
-                                if (filteredFiles.Count == 1)
-                                    outputs.Remove(filteredFiles[0]);
-                                else if (filteredFiles.Count >= 2)
-                                    outputs.RemoveRange(filteredFiles.DrainToImmutable());
+                                    break;
+                                }
+                            case SetRemoveManySignal<AbsoluteFile> removeManyEvent:
+                                {
+                                    var filteredFiles = ImmutableArray.CreateBuilder<AbsoluteFile>();
 
+                                    foreach (var file in removeManyEvent.Items)
+                                    {
+                                        var rootDir = Path.GetDirectoryName(file.AbsolutePath);
+                                        if (matcher.Match(rootDir!, Path.GetFileName(file.AbsolutePath)).HasMatches)
+                                            filteredFiles.Add(file);
+                                    }
+
+                                    if (filteredFiles.Count == 1)
+                                        outputs.Remove(filteredFiles[0]);
+                                    else if (filteredFiles.Count >= 2)
+                                        outputs.RemoveRange(filteredFiles.DrainToImmutable());
+
+                                    break;
+                                }
+                            case SetClearSignal<AbsoluteFile>:
+                                outputs.Clear();
                                 break;
-                            }
-                        case SetClearSignal<AbsoluteFile>:
-                            outputs.Clear();
-                            break;
-                        case SetFreezeSignal<AbsoluteFile>:
-                            outputs.Freeze();
-                            break;
-                        case SetResumeSignal<AbsoluteFile>:
-                            outputs.Resume();
-                            break;
+                            case SetFreezeSignal<AbsoluteFile>:
+                                outputs.Freeze();
+                                break;
+                            case SetResumeSignal<AbsoluteFile>:
+                                outputs.Resume();
+                                break;
+                        }
                     }
                 }
             }

@@ -9,7 +9,13 @@
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
-        IChannelWriter<T> OpenWrite<T>();
+        IChannelWriter<T> Writer<T>();
+
+        /// <summary>
+        /// Binds the writable channel to the specified readable channel.
+        /// </summary>
+        /// <param name="source"></param>
+        void Bind(IReadableChannelHandle source);
 
     }
 

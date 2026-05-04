@@ -45,40 +45,34 @@ namespace Gip.Hosting
         public Guid Id => _id;
 
         /// <inheritdoc />
-        public async ValueTask<ILocalCallHandle> CallAsync(ImmutableArray<IReadableChannelHandle?> sources, ImmutableArray<IWritableChannelHandle?> outputs, CancellationToken cancellationToken)
+        public async ValueTask<ILocalCallHandle> CallAsync(ImmutableArray<IReadableChannelHandle> sources, CancellationToken cancellationToken)
         {
             if (sources.Length != Schema.Sources.Length)
                 throw new ArgumentException("Function call does not contain the expected number of sources.", nameof(sources));
-            if (outputs.Length != Schema.Outputs.Length)
-                throw new ArgumentException("Function call does not contain the expected number of outputs.", nameof(outputs));
 
             // copy the sources and fill in the missing channels with local channels
             var s = ImmutableArray.CreateBuilder<IReadableChannelHandle>(Schema.Sources.Length);
             for (int i = 0; i < Schema.Sources.Length; i++)
             {
-                s.Add(sources[i] ?? _pipeline.CreateChannel(Schema.Sources[i]));
+                s.Add(sources[i]);
                 if (s[i].Schema.Signal.Type != Schema.Sources[i].Signal.Type)
                     throw new ArgumentException($"Source parameter #{i} CLR type does not match function schema CLR type.", nameof(sources));
             }
 
-            // copy the outputs and fill in the missing channels with local channels
-            var o = ImmutableArray.CreateBuilder<IWritableChannelHandle>(Schema.Outputs.Length);
+            // create new output channels for the call
+            var o = ImmutableArray.CreateBuilder<ILocalChannelHandle>(Schema.Outputs.Length);
             for (int i = 0; i < Schema.Outputs.Length; i++)
-            {
-                o.Add(outputs[i] ?? _pipeline.CreateChannel(Schema.Outputs[i]));
-                if (o[i].Schema.Signal.Type != Schema.Outputs[i].Signal.Type)
-                    throw new ArgumentException($"Output parameter #{i} CLR type does not match function schema CLR type.", nameof(outputs));
-            }
+                o.Add(_pipeline.CreateChannel(Schema.Outputs[i]));
 
-            var context = new CallImpl(_pipeline, _pipeline.ServiceProvider.CreateAsyncScope(), Context, s.MoveToImmutable(), o.MoveToImmutable());
+            var context = new CallImpl(_pipeline, _pipeline.ServiceProvider.CreateAsyncScope(), Context, this, s.MoveToImmutable(), o.MoveToImmutable());
             await context.StartAsync(cancellationToken);
             return context;
         }
 
         /// <inheritdoc />
-        async ValueTask<ICallHandle> IFunctionHandle.CallAsync(ImmutableArray<IReadableChannelHandle?> sources, ImmutableArray<IWritableChannelHandle?> outputs, CancellationToken cancellationToken)
+        async ValueTask<ICallHandle> IFunctionHandle.CallAsync(ImmutableArray<IReadableChannelHandle> sources, CancellationToken cancellationToken)
         {
-            return await CallAsync(sources, outputs, cancellationToken);
+            return await CallAsync(sources, cancellationToken);
         }
 
     }

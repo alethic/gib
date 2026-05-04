@@ -6,29 +6,30 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Compile Remove="Clients\**" />
-      <EmbeddedResource Remove="Clients\**" />
-      <None Remove="Clients\**" />
+        <Compile Remove="Clients\**" />
+        <EmbeddedResource Remove="Clients\**" />
+        <None Remove="Clients\**" />
     </ItemGroup>
 
     <ItemGroup>
-      <Compile Include="Clients\ClientFactory.cs" />
-      <Compile Include="Clients\Http\HttpCallClient.cs" />
-      <Compile Include="Clients\Http\HttpChannelClient.cs" />
-      <Compile Include="Clients\Http\HttpClientProtocol.cs" />
-      <Compile Include="Clients\Http\HttpFunctionClient.cs" />
-      <Compile Include="Clients\Http\Json\CallRequest.cs" />
-      <Compile Include="Clients\Http\Json\CallResponse.cs" />
-      <Compile Include="Clients\Http\Json\FunctionOutputResponse.cs" />
-      <Compile Include="Clients\Http\Json\FunctionResponse.cs" />
+        <Compile Include="Clients\ClientFactory.cs" />
+        <Compile Include="Clients\Http\HttpCallClient.cs" />
+        <Compile Include="Clients\Http\HttpChannelClient.cs" />
+        <Compile Include="Clients\Http\HttpClientProtocol.cs" />
+        <Compile Include="Clients\Http\HttpFunctionClient.cs" />
+        <Compile Include="Clients\Http\Json\CallRequest.cs" />
+        <Compile Include="Clients\Http\Json\CallResponse.cs" />
+        <Compile Include="Clients\Http\Json\FunctionOutputResponse.cs" />
+        <Compile Include="Clients\Http\Json\FunctionResponse.cs" />
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.1" />
+        <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.1" />
+        <PackageReference Include="Nito.AsyncEx.Coordination" Version="5.1.2" />
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Gip.Abstractions\Gip.Abstractions.csproj" />
+        <ProjectReference Include="..\Gip.Abstractions\Gip.Abstractions.csproj" />
     </ItemGroup>
 
 </Project>

@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Linq;
+using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -9,8 +9,6 @@ using Gip.Abstractions;
 using Gip.Base;
 using Gip.Base.Collections;
 using Gip.Core;
-
-using Google.Protobuf.WellKnownTypes;
 
 namespace Gip.Hosting.AspNetCore.Sample
 {
@@ -26,54 +24,66 @@ namespace Gip.Hosting.AspNetCore.Sample
         /// <summary>
         /// Handles an individual call.
         /// </summary>
-        /// <param name="call"></param>
+        /// <param name="context"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public override async Task CallAsync(ICallContext call, CancellationToken cancellationToken)
+        public override async Task CallAsync(ICallContext context, CancellationToken cancellationToken)
         {
-            var fileListFunc = call.Pipeline.CreateFunction(new FileList());
-            var fileFilterFunc = call.Pipeline.CreateFunction(new FileListFilter());
-            var csharpCompilerFunc = call.Pipeline.CreateFunction(new CSharpCompilerContext());
+            var messagesChannel = context.Pipeline.CreateChannel(ChannelSchema.FromClrType<SequenceSignal<string>>());
+            var fileListFunc = context.Pipeline.CreateFunction(new FileList());
+            var fileFilterFunc = context.Pipeline.CreateFunction(new FileListFilter());
+            var fileListToFileChannelFunc = context.Pipeline.CreateFunction(new DelegateSetToMap<AbsoluteFile, AbsoluteFile, ImmutableArray<IReadableChannelHandle>>(
+                async (c, s, ct) => s,
+                async (c, s, ct) => [c.Pipeline.CreateSingletonValue(s)]));
+            var repeatFileFunc = context.Pipeline.CreateFunction(new RepeatFunction<AbsoluteFile>());
+            var readFileFunc = context.Pipeline.CreateFunction(new ReadFile());
+            var decodeTextFunc = context.Pipeline.CreateFunction(new DecodeText());
+            var csharpCompilerFunc = context.Pipeline.CreateFunction(new CSharpCompilerContext());
 
             // call file tree to read sources directory
-            var sourcesFileListDirectoryChannel = call.Pipeline.CreateChannel(ChannelSchema.FromClrType<ValueSignal<AbsoluteFile>>());
-            using var sourcesFileListDirectoryEmit = sourcesFileListDirectoryChannel.EmitValue<AbsoluteFile>();
-            sourcesFileListDirectoryEmit.Set(AbsoluteFile.FromPath("C:\\Users\\jhaltom\\temp"));
-            var sourcesFileListFilesChannel = call.Pipeline.CreateChannel(ChannelSchema.FromClrType<SetSignal<AbsoluteFile>>());
-            using var sourcesFileListCall = await fileListFunc.CallAsync([sourcesFileListDirectoryChannel], [sourcesFileListFilesChannel], cancellationToken);
+            var sourcesFileListDirectoryChannel = context.Pipeline.CreateSingletonValue(AbsoluteFile.FromPath("C:\\Users\\jhaltom\\temp"));
+            using var sourcesFileListCall = await fileListFunc.CallAsync([sourcesFileListDirectoryChannel], cancellationToken);
 
             // filter file tree to only CS files
-            var sourcesFileListFilterGlobChannel = call.Pipeline.CreateChannel(ChannelSchema.FromClrType<ValueSignal<string>>());
-            using var sourcesFileListFilterGlobEmit = sourcesFileListFilterGlobChannel.EmitValue<string>();
-            sourcesFileListFilterGlobEmit.Set("*.cs");
-            var sourcesFileListFilterOutputChannel = call.Pipeline.CreateChannel(ChannelSchema.FromClrType<SetSignal<AbsoluteFile>>());
-            using var sourcesFileTreeFilterCall = await fileFilterFunc.CallAsync([sourcesFileListFilesChannel, sourcesFileListFilterGlobChannel], [sourcesFileListFilterOutputChannel], cancellationToken);
+            var sourcesFileGlobChannel = context.Pipeline.CreateSingletonValue("*.cs");
+            using var sourcesFileFilterCall = await fileFilterFunc.CallAsync([sourcesFileListCall.Outputs[0], sourcesFileGlobChannel], cancellationToken);
+
+            // returns a map of AbsoluteFile to a channel containing an absolute file
+            using var sourcesFileToMapOfChannelCall = await fileListToFileChannelFunc.CallAsync([sourcesFileFilterCall.Outputs[0]], cancellationToken);
+
+            // repeat a repeater that creates a ReadFile function for each source file
+            using var sourcesFileReadCall = await repeatFileFunc.CallAsync([context.Pipeline.CreateSingletonValue((IFunctionHandle)readFileFunc), sourcesFileToMapOfChannelCall.Outputs[0]], cancellationToken);
+
+            var sourcesFileReadToDecodeCall = context.Pipeline.CreateFunction(new DelegateMapMap<AbsoluteFile, ImmutableArray<IReadableChannelHandle>, AbsoluteFile, ImmutableArray<IReadableChannelHandle>>(
+                async (c, s, ct) => s,
+                async (c, s, ct) => [s[0], s[1]]));
+
+            // repeat a repeater that creates a DecodeText function for each source file
+            using var sourcesFileDecodeCall = await repeatFileFunc.CallAsync([context.Pipeline.CreateSingletonValue((IFunctionHandle)decodeTextFunc), sourcesFileReadCall.Outputs[0]], cancellationToken);
 
             // call file tree to read references directory
-            var refsFileListDirectoryChannel = call.Pipeline.CreateChannel(ChannelSchema.FromClrType<ValueSignal<AbsoluteFile>>());
-            using var refsFileListDirectoryEmit = refsFileListDirectoryChannel.EmitValue<AbsoluteFile>();
-            refsFileListDirectoryEmit.Set(AbsoluteFile.FromPath("C:\\Program Files\\dotnet\\packs\\Microsoft.NETCore.App.Ref\\10.0.1\\ref\\net10.0"));
-            var refsFileListFilesChannel = call.Pipeline.CreateChannel(ChannelSchema.FromClrType<SetSignal<AbsoluteFile>>());
-            using var refsFileListCall = await fileListFunc.CallAsync([refsFileListDirectoryChannel], [refsFileListFilesChannel], cancellationToken);
+            var refsFileListDirectoryChannel = context.Pipeline.CreateSingletonValue(AbsoluteFile.FromPath("C:\\Program Files\\dotnet\\packs\\Microsoft.NETCore.App.Ref\\10.0.1\\ref\\net10.0"));
+            using var refsFileListCall = await fileListFunc.CallAsync([refsFileListDirectoryChannel], cancellationToken);
 
             // filter file tree to only CS files
-            var refsFileListFilterGlobChannel = call.Pipeline.CreateChannel(ChannelSchema.FromClrType<ValueSignal<string>>());
-            using var refsFileListFilterGlobEmit = refsFileListFilterGlobChannel.EmitValue<string>();
-            refsFileListFilterGlobEmit.Set("*.dll");
-            var refsFileListFilterOutputChannel = call.Pipeline.CreateChannel(ChannelSchema.FromClrType<SetSignal<AbsoluteFile>>());
-            using var refsFileTreeFilterCall = await fileFilterFunc.CallAsync([refsFileListFilesChannel, refsFileListFilterGlobChannel], [refsFileListFilterOutputChannel], cancellationToken);
+            var refsFileGlobChannel = context.Pipeline.CreateSingletonValue("*.dll");
+            using var refsFileFilterCall = await fileFilterFunc.CallAsync([refsFileListCall.Outputs[0], refsFileGlobChannel], cancellationToken);
+
+            // returns a map of AbsoluteFile to a channel containing an absolute file
+            using var refsFileToMapOfChannelCall = await fileListToFileChannelFunc.CallAsync([refsFileFilterCall.Outputs[0]], cancellationToken);
+
+            // repeat a repeater that creates a ReadFile function for each source file
+            using var refsFileReadCall = await repeatFileFunc.CallAsync([context.Pipeline.CreateSingletonValue((IFunctionHandle)readFileFunc), refsFileToMapOfChannelCall.Outputs[0]], cancellationToken);
 
             // run compiler
-            var csharpAssemblyNameChannel = call.Pipeline.CreateChannel(ChannelSchema.FromClrType<ValueSignal<string>>());
-            using var csharpAssemblyNameEmit = csharpAssemblyNameChannel.EmitValue<string>();
-            csharpAssemblyNameEmit.Set("Test");
-            var csharpOutputFileChannel = call.Pipeline.CreateChannel(ChannelSchema.FromClrType<ValueSignal<AbsoluteFile>>());
-            using var csharpOutputFileEmit = csharpOutputFileChannel.EmitValue<AbsoluteFile>();
-            csharpOutputFileEmit.Set(AbsoluteFile.FromPath("C:\\Users\\jhaltom\\Test.dll"));
-            var csharpMessageChannel = call.Pipeline.CreateChannel(ChannelSchema.FromClrType<SequenceSignal<string>>());
-            using var csharpCompilerCall = await csharpCompilerFunc.CallAsync([csharpAssemblyNameChannel, refsFileListFilterOutputChannel, sourcesFileListFilterOutputChannel, csharpOutputFileChannel], [csharpMessageChannel], cancellationToken);
+            var csharpAssemblyNameChannel = context.Pipeline.CreateSingletonValue("Test");
+            var csharpOutputFileChannel = context.Pipeline.CreateSingletonValue(AbsoluteFile.FromPath("C:\\Users\\jhaltom\\Test.dll"));
+            using var csharpCompilerCall = await csharpCompilerFunc.CallAsync([csharpAssemblyNameChannel, refsFileFilterCall.Outputs[0], sourcesFileFilterCall.Outputs[0], csharpOutputFileChannel], cancellationToken);
 
-            await foreach (var messages in csharpMessageChannel.CollectSequence<string>(cancellationToken))
+            var collectMessages = context.Pipeline.CreateFunction(new ConcatSequenceSet<string>());
+            using var collectMessagesCall = collectMessages.CallAsync([], cancellationToken);
+
+            await foreach (var messages in csharpCompilerCall.Outputs[0].CollectSequence<string>(cancellationToken))
             {
                 Console.WriteLine();
                 Console.WriteLine();

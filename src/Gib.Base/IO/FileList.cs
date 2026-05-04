@@ -132,16 +132,27 @@ namespace Gib.Base.IO
                                                 var file = new FileInfo(args.FullPath);
                                                 if (file.Exists)
                                                 {
-                                                    files.Freeze();
-
-                                                    if (state.Remove(file.FullName, out var oldFile))
-                                                        files.Remove(oldFile);
-
                                                     var newFile = AbsoluteFile.FromPath(file.FullName);
-                                                    if (state.TryAdd(file.FullName, newFile))
-                                                        files.Add(newFile);
+                                                    if (state.Remove(file.FullName, out var oldFile))
+                                                    {
+                                                        // readd file in either case
+                                                        state.Add(file.FullName, newFile);
 
-                                                    files.Resume();
+                                                        // if files do not match, we did have some change
+                                                        if (Equals(oldFile, newFile) == false)
+                                                        {
+                                                            files.Freeze();
+                                                            files.Remove(oldFile);
+                                                            files.Add(newFile);
+                                                            files.Resume();
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        // change to file we didn't have on record, simulate add
+                                                        if (state.TryAdd(file.FullName, newFile))
+                                                            files.Add(newFile);
+                                                    }
                                                 }
                                                 else
                                                 {

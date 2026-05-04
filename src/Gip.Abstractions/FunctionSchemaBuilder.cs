@@ -94,8 +94,9 @@ namespace Gip.Abstractions
         /// Adds a new source channel to the schema.
         /// </summary>
         /// <param name="type"></param>
+        /// <param name="name"></param>
         /// <returns></returns>
-        public FunctionSchemaBuilder Source(Type type)
+        public FunctionSchemaBuilder Source(Type type, string? name = null)
         {
             _sources.Add(new ChannelSchema(AddToModel(type)));
             return this;
@@ -114,9 +115,21 @@ namespace Gip.Abstractions
         /// <summary>
         /// Adds a new source channel to the schema.
         /// </summary>
-        /// <param name="type"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="name"></param>
         /// <returns></returns>
-        public FunctionSchemaBuilder Output(Type type)
+        public FunctionSchemaBuilder Source<T>(string? name = null)
+        {
+            return Source(typeof(T), name);
+        }
+
+        /// <summary>
+        /// Adds a new source channel to the schema.
+        /// </summary>
+        /// <param name="type"></param>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        public FunctionSchemaBuilder Output(Type type, string? name = null)
         {
             _outputs.Add(new ChannelSchema(AddToModel(type)));
             return this;
@@ -130,6 +143,17 @@ namespace Gip.Abstractions
         public FunctionSchemaBuilder Output<T>()
         {
             return Output(typeof(T));
+        }
+
+        /// <summary>
+        /// Adds a new output channel to the schema.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        public FunctionSchemaBuilder Output<T>(string? name = null)
+        {
+            return Output(typeof(T), name);
         }
 
         /// <summary>

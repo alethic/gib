@@ -7,7 +7,7 @@ namespace Gib.Base.IO
 {
 
     [ProtoContract]
-    public record struct FileStat(
+    public readonly record struct FileStat(
         [property: ProtoMember(1, Name = "ctime")] DateTime CreatedTime,
         [property: ProtoMember(2, Name = "mtime")] DateTime ModifiedTime,
         [property: ProtoMember(3, Name = "atime")] DateTime AccessedTime)

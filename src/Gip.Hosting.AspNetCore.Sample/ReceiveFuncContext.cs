@@ -42,7 +42,14 @@ namespace Gip.Hosting.AspNetCore.Sample
 
                 var opFunc = call.Pipeline.ResolveFunction(opRef);
                 Console.WriteLine("Switching operation to {0}", call.Pipeline.GetFunctionReference(opFunc).Uri);
-                opCall = await opFunc.CallAsync([call.Sources[1], call.Sources[2]], [call.Outputs[0]], cancellationToken);
+                opCall = await opFunc.CallAsync(
+                    [
+                        call.Sources[1],
+                        call.Sources[2]
+                    ],
+                    cancellationToken);
+
+                call.Outputs[0].Bind(opCall.Outputs[0]);
             }
 
             // wait for any outstanding call to terminate

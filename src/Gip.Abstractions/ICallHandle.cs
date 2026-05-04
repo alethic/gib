@@ -8,9 +8,14 @@ namespace Gip.Abstractions
     {
 
         /// <summary>
+        /// Gets the function that was called.
+        /// </summary>
+        IFunctionHandle Function { get; }
+
+        /// <summary>
         /// Gets the output parameters of the call.
         /// </summary>
-        ImmutableArray<IWritableChannelHandle> Outputs { get; }
+        ImmutableArray<IReadableChannelHandle> Outputs { get; }
 
     }
 

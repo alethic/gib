@@ -34,31 +34,36 @@ namespace Gib.Base.IO
         {
             using var outputs = call.Outputs[0].EmitSet<AbsoluteFile>();
 
-            await foreach (var signal in call.Sources[0].OpenRead<SetSignal<RelativeFile>>(cancellationToken))
+            await foreach (var reader in call.Sources[0].Reader<SetSignal<RelativeFile>>(cancellationToken))
             {
-                switch (signal)
+                outputs.Clear();
+
+                await foreach (var signal in reader)
                 {
-                    case SetAddSignal<RelativeFile> addSignal:
-                        outputs.Add(new AbsoluteFile(addSignal.Item.AbsolutePath, addSignal.Item.Statistics));
-                        break;
-                    case SetAddManySignal<RelativeFile> addManySignal:
-                        outputs.AddRange(addManySignal.Items.Select(i => new AbsoluteFile(i.AbsolutePath, i.Statistics)).ToImmutableArray());
-                        break;
-                    case SetRemoveSignal<RelativeFile> removeSignal:
-                        outputs.Remove(new AbsoluteFile(removeSignal.Item.AbsolutePath, removeSignal.Item.Statistics));
-                        break;
-                    case SetRemoveManySignal<RelativeFile> removeManySignal:
-                        outputs.RemoveRange(removeManySignal.Items.Select(i => new AbsoluteFile(i.AbsolutePath, i.Statistics)).ToImmutableArray());
-                        break;
-                    case SetClearSignal<RelativeFile>:
-                        outputs.Clear();
-                        break;
-                    case SetFreezeSignal<RelativeFile>:
-                        outputs.Freeze();
-                        break;
-                    case SetResumeSignal<RelativeFile>:
-                        outputs.Resume();
-                        break;
+                    switch (signal)
+                    {
+                        case SetAddSignal<RelativeFile> addSignal:
+                            outputs.Add(new AbsoluteFile(addSignal.Item.AbsolutePath, addSignal.Item.Statistics));
+                            break;
+                        case SetAddManySignal<RelativeFile> addManySignal:
+                            outputs.AddRange(addManySignal.Items.Select(i => new AbsoluteFile(i.AbsolutePath, i.Statistics)).ToImmutableArray());
+                            break;
+                        case SetRemoveSignal<RelativeFile> removeSignal:
+                            outputs.Remove(new AbsoluteFile(removeSignal.Item.AbsolutePath, removeSignal.Item.Statistics));
+                            break;
+                        case SetRemoveManySignal<RelativeFile> removeManySignal:
+                            outputs.RemoveRange(removeManySignal.Items.Select(i => new AbsoluteFile(i.AbsolutePath, i.Statistics)).ToImmutableArray());
+                            break;
+                        case SetClearSignal<RelativeFile>:
+                            outputs.Clear();
+                            break;
+                        case SetFreezeSignal<RelativeFile>:
+                            outputs.Freeze();
+                            break;
+                        case SetResumeSignal<RelativeFile>:
+                            outputs.Resume();
+                            break;
+                    }
                 }
             }
         }

@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -29,6 +31,25 @@ namespace Gib.Base.IO
             .Build();
 
         /// <summary>
+        /// Clears all of the files in cache.
+        /// </summary>
+        /// <param name="cached"></param>
+        /// <param name="copied"></param>
+        void Clear(Dictionary<string, RelativeFile> cached, SetEmitter<RelativeFile> copied)
+        {
+            // remove all recorded files
+            foreach (var removedFile in cached.Values)
+                if (File.Exists(removedFile.AbsolutePath))
+                    File.Delete(removedFile.AbsolutePath);
+
+            // clear our record
+            cached.Clear();
+
+            // send notice of files cleared
+            copied.Clear();
+        }
+
+        /// <summary>
         /// Handles an individual call.
         /// </summary>
         /// <param name="call"></param>
@@ -36,128 +57,111 @@ namespace Gib.Base.IO
         /// <returns></returns>
         public override async Task CallAsync(ICallContext call, CancellationToken cancellationToken)
         {
-            var copiedFiles = call.Outputs[0].EmitSet<RelativeFile>();
-
-            // maintain state about files we have copied
-            var copiedFilesSet = new Dictionary<string, RelativeFile>();
+            var cached = new Dictionary<string, RelativeFile>();
+            var copied = call.Outputs[0].EmitSet<RelativeFile>();
 
             await foreach (var destination in call.Sources[0].CollectValue<AbsoluteFile>(cancellationToken))
             {
-                // delete all files recorded in copied files set initially
+                // when the destination changes, we clear any files we have already copied
+                Clear(cached, copied);
+
+                await foreach (var reader in call.Sources[1].Reader<SetSignal<RelativeFile>>(cancellationToken))
                 {
-                    // remove all recorded files
-                    foreach (var removedFile in copiedFilesSet.Values)
-                        if (File.Exists(removedFile.AbsolutePath))
-                            File.Delete(removedFile.AbsolutePath);
+                    // when the reader changes, we clear any files we have already copied
+                    Clear(cached, copied);
 
-                    // clear our record
-                    copiedFilesSet.Clear();
-
-                    // send notice of files cleared
-                    copiedFiles.Clear();
-                }
-
-                // read from the feed of source files
-                await foreach (var signal in call.Sources[1].OpenRead<SetSignal<RelativeFile>>(cancellationToken))
-                {
-                    switch (signal)
+                    // process each signal of the new set
+                    await foreach (var signal in reader)
                     {
-                        case SetAddSignal<RelativeFile> addSignal:
-                            {
-                                // copy file to new path
-                                var newPath = Path.Combine(destination.AbsolutePath, addSignal.Item.RelativePath);
-                                File.Copy(addSignal.Item.AbsolutePath, newPath);
-
-                                // record new copied item
-                                var newFile = RelativeFile.FromPath(newPath, addSignal.Item.RelativePath);
-                                copiedFilesSet.Add(newFile.AbsolutePath, newFile);
-
-                                // send notice of new file
-                                copiedFiles.Add(newFile);
-
-                                break;
-                            }
-                        case SetAddManySignal<RelativeFile> addManySignal:
-                            {
-                                var newFiles = ImmutableArray.CreateBuilder<RelativeFile>();
-
-                                // copy file to new path
-                                foreach (var addedFile in addManySignal.Items)
+                        switch (signal)
+                        {
+                            case SetAddSignal<RelativeFile> addSignal:
                                 {
                                     // copy file to new path
-                                    var newPath = Path.Combine(destination.AbsolutePath, addedFile.RelativePath);
-                                    var newFile = RelativeFile.FromPath(newPath, addedFile.RelativePath);
-                                    File.Copy(addedFile.AbsolutePath, newFile.AbsolutePath);
+                                    var newPath = Path.Combine(destination.AbsolutePath, addSignal.Item.RelativePath);
+                                    File.Copy(addSignal.Item.AbsolutePath, newPath);
 
                                     // record new copied item
-                                    copiedFilesSet.Add(newFile.AbsolutePath, newFile);
+                                    var newFile = RelativeFile.FromPath(newPath, addSignal.Item.RelativePath);
+                                    cached.Add(newFile.AbsolutePath, newFile);
 
                                     // send notice of new file
-                                    newFiles.Add(newFile);
+                                    copied.Add(newFile);
+
+                                    break;
                                 }
-
-                                // send notice of new files
-                                copiedFiles.AddRange(newFiles.MoveToImmutable());
-
-                                break;
-                            }
-                        case SetRemoveSignal<RelativeFile> removeSignal:
-                            {
-                                var oldPath = Path.Combine(destination.AbsolutePath, removeSignal.Item.RelativePath);
-                                if (copiedFilesSet.TryGetValue(oldPath, out var oldFile))
+                            case SetAddManySignal<RelativeFile> addManySignal:
                                 {
-                                    if (File.Exists(oldFile.AbsolutePath))
-                                        File.Delete(oldFile.AbsolutePath);
+                                    var newFiles = ImmutableArray.CreateBuilder<RelativeFile>();
 
-                                    // record new deleted item
-                                    copiedFilesSet.Remove(oldPath);
+                                    // copy file to new path
+                                    foreach (var addedFile in addManySignal.Items)
+                                    {
+                                        // copy file to new path
+                                        var newPath = Path.Combine(destination.AbsolutePath, addedFile.RelativePath);
+                                        var newFile = RelativeFile.FromPath(newPath, addedFile.RelativePath);
+                                        File.Copy(addedFile.AbsolutePath, newFile.AbsolutePath);
 
-                                    // send notice of old file
-                                    copiedFiles.Remove(oldFile);
+                                        // record new copied item
+                                        cached.Add(newFile.AbsolutePath, newFile);
+
+                                        // send notice of new file
+                                        newFiles.Add(newFile);
+                                    }
+
+                                    // send notice of new files
+                                    copied.AddRange(newFiles.MoveToImmutable());
+
+                                    break;
                                 }
-
-                                break;
-                            }
-                        case SetRemoveManySignal<RelativeFile> removeManySignal:
-                            {
-                                var oldFiles = ImmutableArray.CreateBuilder<RelativeFile>();
-
-                                foreach (var removedFile in removeManySignal.Items)
+                            case SetRemoveSignal<RelativeFile> removeSignal:
                                 {
-                                    var oldPath = Path.Combine(destination.AbsolutePath, removedFile.RelativePath);
-                                    if (copiedFilesSet.TryGetValue(oldPath, out var oldFile))
+                                    var oldPath = Path.Combine(destination.AbsolutePath, removeSignal.Item.RelativePath);
+                                    if (cached.TryGetValue(oldPath, out var oldFile))
                                     {
                                         if (File.Exists(oldFile.AbsolutePath))
                                             File.Delete(oldFile.AbsolutePath);
 
                                         // record new deleted item
-                                        copiedFilesSet.Remove(oldPath);
+                                        cached.Remove(oldPath);
 
                                         // send notice of old file
-                                        oldFiles.Add(oldFile);
+                                        copied.Remove(oldFile);
                                     }
+
+                                    break;
                                 }
+                            case SetRemoveManySignal<RelativeFile> removeManySignal:
+                                {
+                                    var oldFiles = ImmutableArray.CreateBuilder<RelativeFile>();
 
-                                // send notice of old files
-                                copiedFiles.RemoveRange(oldFiles.MoveToImmutable());
+                                    foreach (var removedFile in removeManySignal.Items)
+                                    {
+                                        var oldPath = Path.Combine(destination.AbsolutePath, removedFile.RelativePath);
+                                        if (cached.TryGetValue(oldPath, out var oldFile))
+                                        {
+                                            if (File.Exists(oldFile.AbsolutePath))
+                                                File.Delete(oldFile.AbsolutePath);
 
+                                            // record new deleted item
+                                            cached.Remove(oldPath);
+
+                                            // send notice of old file
+                                            oldFiles.Add(oldFile);
+                                        }
+                                    }
+
+                                    // send notice of old files
+                                    copied.RemoveRange(oldFiles.MoveToImmutable());
+
+                                    break;
+                                }
+                            case SetClearSignal<RelativeFile> clearSignal:
+                                Clear(cached, copied);
                                 break;
-                            }
-                        case SetClearSignal<RelativeFile> clearSignal:
-                            {
-                                // remove all recorded files
-                                foreach (var removedFile in copiedFilesSet.Values)
-                                    if (File.Exists(removedFile.AbsolutePath))
-                                        File.Delete(removedFile.AbsolutePath);
-
-                                // clear our record
-                                copiedFilesSet.Clear();
-
-                                // send notice of files cleared
-                                copiedFiles.Clear();
-
-                                break;
-                            }
+                            default:
+                                throw new InvalidOperationException();
+                        }
                     }
                 }
             }

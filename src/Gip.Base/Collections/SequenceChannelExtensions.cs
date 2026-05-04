@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -16,43 +17,64 @@ namespace Gip.Base.Collections
         /// </summary>
         /// <param name="channel"></param>
         /// <returns></returns>
-        public static SequenceEmitter<T> EmitSequence<T>(this IWritableChannelHandle channel) => new SequenceEmitter<T>(channel.OpenWrite<SequenceSignal<T>>());
+        public static SequenceEmitter<T> EmitSequence<T>(this IWritableChannelHandle channel) => new SequenceEmitter<T>(channel.Writer<SequenceSignal<T>>());
 
         /// <summary>
-        /// Parses the channel for the 'list' protocol, returning an enumeration of completed sets.
+        /// Adds a source sequence to the schema.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="builder"></param>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        public static FunctionSchemaBuilder SourceSequence<T>(this FunctionSchemaBuilder builder, string? name= null) => builder.Source<SequenceSignal<T>>(name);
+
+        /// <summary>
+        /// Adds a output sequence to the schema.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="builder"></param>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        public static FunctionSchemaBuilder OutputSequence<T>(this FunctionSchemaBuilder builder, string? name = null) => builder.Output<SequenceSignal<T>>(name);
+
+        /// <summary>
+        /// Parses the channel for the 'sequence' protocol, returning an enumeration of completed sequence.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="channel"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public static async IAsyncEnumerable<ImmutableList<T>> CollectSequence<T>(this IReadableChannelHandle channel, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        public static async IAsyncEnumerable<ImmutableList<ReadOnlyMemory<T>>> CollectSequence<T>(this IReadableChannelHandle channel, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var value = ImmutableList<T>.Empty;
-            var pause = false;
-
-            await foreach (var signal in channel.OpenRead<SequenceSignal<T>>(cancellationToken))
+            await foreach (var reader in channel.Reader<SequenceSignal<T>>(cancellationToken))
             {
-                switch (signal)
-                {
-                    case SequenceFreezeSignal<T>:
-                        pause = true;
-                        break;
-                    case SequenceResumeSignal<T>:
-                        pause = false;
-                        break;
-                    case SequenceAppendSignal<T> appendEvent:
-                        value = value.Add(appendEvent.Item);
-                        break;
-                    case SequenceAppendManySignal<T> appendManyEvent:
-                        value = value.AddRange(appendManyEvent.Items);
-                        break;
-                    case SequenceClearSignal<T>:
-                        value = value.Clear();
-                        break;
-                }
+                var value = ImmutableList<ReadOnlyMemory<T>>.Empty;
+                var pause = false;
 
-                if (pause == false)
-                    yield return value;
+                await foreach (var signal in reader)
+                {
+                    switch (signal)
+                    {
+                        case SequenceFreezeSignal<T>:
+                            pause = true;
+                            break;
+                        case SequenceResumeSignal<T>:
+                            pause = false;
+                            break;
+                        case SequenceAppendSignal<T> appendEvent:
+                            value = value.Add(new T[] { appendEvent.Item });
+                            break;
+                        case SequenceAppendManySignal<T> appendManyEvent:
+                            value = value.Add(appendManyEvent.Items);
+                            break;
+                        case SequenceClearSignal<T>:
+                            value = value.Clear();
+                            break;
+                    }
+
+                    if (pause == false)
+                        yield return value;
+                }
             }
         }
 

@@ -37,7 +37,7 @@ namespace Gip.Hosting
         public Uri Uri => _uri;
 
         /// <inheritdoc />
-        public ValueTask<ICallHandle> CallAsync(ImmutableArray<IReadableChannelHandle?> sources, ImmutableArray<IWritableChannelHandle?> outputs, CancellationToken cancellationToken)
+        public ValueTask<ICallHandle> CallAsync(ImmutableArray<IReadableChannelHandle?> sources, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
         }

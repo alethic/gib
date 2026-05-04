@@ -1,4 +1,4 @@
-﻿using System.Collections.Immutable;
+﻿using System;
 
 using ProtoBuf;
 
@@ -13,7 +13,7 @@ namespace Gip.Base.Collections
         /// Initializes a new instance.
         /// </summary>
         /// <param name="items"></param>
-        public SequenceAppendManySignal(ImmutableArray<T> items)
+        public SequenceAppendManySignal(ReadOnlyMemory<T> items)
         {
             Items = items;
         }
@@ -22,7 +22,7 @@ namespace Gip.Base.Collections
         /// Gets the set of items being appended.
         /// </summary>
         [ProtoMember(1)]
-        public ImmutableArray<T> Items { get; }
+        public ReadOnlyMemory<T> Items { get; }
 
     }
 

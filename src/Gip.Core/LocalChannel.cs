@@ -5,18 +5,12 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Gip.Abstractions;
-
 using Nito.AsyncEx;
 
-namespace Gip.Hosting
+namespace Gip.Core
 {
 
-    /// <summary>
-    /// Implementation of <see cref="IChannelStore"/> that supports a forward-only linked list.
-    /// </summary>
-    /// <typeparam name="T"></typeparam>
-    class DefaultChannelStore<T> : IChannelStore<T>
+    public class LocalChannel<TSignal> : IChannel<TSignal>, IAsyncEnumerable<TSignal>
     {
 
         const int BLOCK_SIZE = 16;
@@ -24,7 +18,7 @@ namespace Gip.Hosting
         [InlineArray(BLOCK_SIZE)]
         struct Buffer
         {
-            T _element0;
+            TSignal _element0;
         }
 
         class Block()
@@ -41,14 +35,14 @@ namespace Gip.Hosting
         /// <summary>
         /// Initializes a new instance.
         /// </summary>
-        public DefaultChannelStore()
+        public LocalChannel()
         {
             _endBlock = new Block();
             _begBlock = _endBlock;
         }
 
         /// <inheritdoc />
-        public void Store(T signal)
+        public void Write(TSignal signal)
         {
             using var l = _monitor.Enter();
 
@@ -103,52 +97,18 @@ namespace Gip.Hosting
         }
 
         /// <inheritdoc />
-        public IAsyncEnumerable<T> OpenAsync(CancellationToken cancellationToken = default)
+        public IAsyncEnumerator<TSignal> GetAsyncEnumerator(CancellationToken cancellationToken = default)
         {
-            return new AsyncEnumerable(this, _monitor, cancellationToken, _begBlock);
-        }
-
-        /// <summary>
-        /// Provides an enumerable for a channel.
-        /// </summary>
-        struct AsyncEnumerable : IAsyncEnumerable<T>
-        {
-
-            readonly DefaultChannelStore<T> _store;
-            readonly AsyncMonitor _monitor;
-            readonly CancellationToken _cancellationToken;
-            readonly Block _initialBlock;
-
-            /// <summary>
-            /// Initializes a new instance.
-            /// </summary>
-            /// <param name="store"></param>
-            /// <param name="monitor"></param>
-            /// <param name="cancellationToken"></param>
-            /// <param name="initialBlock"></param>
-            public AsyncEnumerable(DefaultChannelStore<T> store, AsyncMonitor monitor, CancellationToken cancellationToken, Block initialBlock)
-            {
-                _store = store;
-                _monitor = monitor;
-                _cancellationToken = cancellationToken;
-                _initialBlock = initialBlock;
-            }
-
-            /// <inheritdoc />
-            public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
-            {
-                return new AsyncEnumerator(_store, _monitor, CancellationTokenSource.CreateLinkedTokenSource(_cancellationToken, cancellationToken).Token, _initialBlock);
-            }
-
+            return new AsyncEnumerator(this, _monitor, cancellationToken, _begBlock);
         }
 
         /// <summary>
         /// Provides an enumerator for a channel.
         /// </summary>
-        class AsyncEnumerator : IAsyncEnumerator<T>
+        class AsyncEnumerator : IAsyncEnumerator<TSignal>
         {
 
-            readonly DefaultChannelStore<T> _store;
+            readonly LocalChannel<TSignal> _channel;
             readonly AsyncMonitor _monitor;
             readonly CancellationToken _cancellationToken;
 
@@ -158,13 +118,13 @@ namespace Gip.Hosting
             /// <summary>
             /// Initializes a new instance starting from the specified block.
             /// </summary>
-            /// <param name="store"></param>
+            /// <param name="channel"></param>
             /// <param name="monitor"></param>
             /// <param name="cancellationToken"></param>
             /// <param name="initialBlock"></param>
-            public AsyncEnumerator(DefaultChannelStore<T> store, AsyncMonitor monitor, CancellationToken cancellationToken, Block initialBlock)
+            public AsyncEnumerator(LocalChannel<TSignal> channel, AsyncMonitor monitor, CancellationToken cancellationToken, Block initialBlock)
             {
-                _store = store;
+                _channel = channel;
                 _monitor = monitor;
                 _cancellationToken = cancellationToken;
                 _block = initialBlock;
@@ -172,7 +132,7 @@ namespace Gip.Hosting
             }
 
             /// <inheritdoc />
-            public T Current => _position >= 0 ? _block.Data[_position] : throw new InvalidOperationException();
+            public TSignal Current => _position >= 0 ? _block.Data[_position] : throw new InvalidOperationException();
 
             /// <inheritdoc />
             public async ValueTask<bool> MoveNextAsync()
@@ -227,7 +187,6 @@ namespace Gip.Hosting
             }
 
         }
-
 
     }
 

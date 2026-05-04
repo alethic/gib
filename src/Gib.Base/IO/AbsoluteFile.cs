@@ -6,7 +6,7 @@ namespace Gib.Base.IO
 {
 
     [ProtoContract]
-    public record struct AbsoluteFile(
+    public readonly record struct AbsoluteFile(
         [property: ProtoMember(1)] string AbsolutePath,
         [property: ProtoMember(2)] FileStat Statistics
     )

@@ -20,10 +20,9 @@ namespace Gip.Abstractions
         /// Initiates a call to the function. The task returns once the call has been initiated.
         /// </summary>
         /// <param name="sources"></param>
-        /// <param name="outputs"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        ValueTask<ICallHandle> CallAsync(ImmutableArray<IReadableChannelHandle?> sources, ImmutableArray<IWritableChannelHandle?> outputs, CancellationToken cancellationToken);
+        ValueTask<ICallHandle> CallAsync(ImmutableArray<IReadableChannelHandle> sources, CancellationToken cancellationToken);
 
     }
 

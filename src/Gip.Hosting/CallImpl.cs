@@ -19,8 +19,9 @@ namespace Gip.Hosting
         readonly Pipeline _pipeline;
         readonly AsyncServiceScope _services;
         readonly IFunctionContext _function;
+        readonly IFunctionHandle _functionHandle;
         readonly ImmutableArray<IReadableChannelHandle> _sources;
-        readonly ImmutableArray<IWritableChannelHandle> _outputs;
+        readonly ImmutableArray<ILocalChannelHandle> _outputs;
 
         CancellationTokenSource? _stop;
         Task? _task;
@@ -31,10 +32,11 @@ namespace Gip.Hosting
         /// <param name="pipeline"></param>
         /// <param name="services"></param>
         /// <param name="function"></param>
+        /// <param name="fuctionHandle"></param>
         /// <param name="sources"></param>
         /// <param name="outputs"></param>
         /// <exception cref="ArgumentException"></exception>
-        public CallImpl(Pipeline pipeline, AsyncServiceScope services, IFunctionContext function, ImmutableArray<IReadableChannelHandle> sources, ImmutableArray<IWritableChannelHandle> outputs)
+        public CallImpl(Pipeline pipeline, AsyncServiceScope services, IFunctionContext function, IFunctionHandle functionHandle, ImmutableArray<IReadableChannelHandle> sources, ImmutableArray<ILocalChannelHandle> outputs)
         {
             if (sources.Length != function.Schema.Sources.Length)
                 throw new ArgumentException("Function does not contain the expected number of sources.", nameof(sources));
@@ -44,6 +46,7 @@ namespace Gip.Hosting
             _pipeline = pipeline;
             _services = services;
             _function = function;
+            _functionHandle = functionHandle;
             _sources = sources;
             _outputs = outputs;
         }
@@ -55,13 +58,22 @@ namespace Gip.Hosting
         public IServiceProvider Services => _services.ServiceProvider;
 
         /// <inheritdoc />
+        public IFunctionHandle Function => _functionHandle;
+
+        /// <inheritdoc />
         public ImmutableArray<IReadableChannelHandle> Sources => _sources;
 
         /// <inheritdoc />
-        public ImmutableArray<IWritableChannelHandle> Outputs => _outputs;
+        public ImmutableArray<ILocalChannelHandle> Outputs => _outputs;
 
         /// <inheritdoc />
         IPipelineContext ICallContext.Pipeline => Pipeline;
+
+        /// <inheritdoc />
+        ImmutableArray<IWritableChannelHandle> ICallContext.Outputs => ImmutableArray<IWritableChannelHandle>.CastUp(_outputs);
+
+        /// <inheritdoc />
+        ImmutableArray<IReadableChannelHandle> ICallHandle.Outputs => ImmutableArray<IReadableChannelHandle>.CastUp(_outputs);
 
         /// <summary>
         /// Runs the call. This method returns when the call is complete.

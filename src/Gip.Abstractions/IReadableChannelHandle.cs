@@ -12,7 +12,7 @@ namespace Gip.Abstractions
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
-        IAsyncEnumerable<T> OpenRead<T>(CancellationToken cancellationToken);
+        IAsyncEnumerable<IChannelReader<T>> Reader<T>(CancellationToken cancellationToken);
 
     }
 
