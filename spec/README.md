@@ -10,7 +10,7 @@ The specification is deliberately layered. Each document depends only on the lay
 |---|----------|-------|
 | 0 | [`00-core-model.md`](00-core-model.md) | Abstract data model and behavioral contract: functions, channels, signals, URIs, `Invoke`/`Subscribe`/metadata, liveness, history, failure. No wire format, no transport. |
 | 1 | [`01-type-system.md`](01-type-system.md) | The signal type system (`ValueSignal<T>`, `SetSignal<T>`, `SequenceSignal<T>`, framing markers), the `FunctionMetadata` description, and Protobuf as the normative encoding. |
-What it means to *be* a Function Host. Conformance requirements: at least one transport, the `.well-known/gip/resolve` function, endpoint exposure, liveness honoring, metadata. Defines Orchestrator Hosts.
+| 2 | [`02-function-host.md`](02-function-host.md) | What it means to *be* a Function Host. Conformance requirements: at least one transport, the `.well-known/gip/resolve` function, endpoint exposure, liveness honoring, metadata. Defines Orchestrator Hosts. |
 | 3 | Function Transport Specifications (one per transport) | |
 | 3a | [`03a-transport-http2.md`](03a-transport-http2.md) | **Normative reference transport.** `gip` over HTTP/2: `POST` = `Invoke`, `GET` = `Subscribe`, content negotiation, request lifetime as liveness, error mapping. |
 | 3b | [`03b-transport-grpc.md`](03b-transport-grpc.md) | `gip` over gRPC. Demonstrates parity with the HTTP/2 reference. |
