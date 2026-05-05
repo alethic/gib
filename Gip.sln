@@ -37,6 +37,20 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gip.Base", "src\Gip.Base\Gi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gib.Core", "src\Gib.Core\Gib.Core.csproj", "{2F54F45F-CC7B-5EB2-9FC8-DC16144D1A66}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "spec", "spec", "{98E5B662-2728-46C9-AE08-521C5F7EDF4A}"
+	ProjectSection(SolutionItems) = preProject
+		spec\00-core-model.md = spec\00-core-model.md
+		spec\01-type-system.md = spec\01-type-system.md
+		spec\02-function-host.md = spec\02-function-host.md
+		spec\03a-transport-http2.md = spec\03a-transport-http2.md
+		spec\03b-transport-grpc.md = spec\03b-transport-grpc.md
+		spec\03c-transport-inproc.md = spec\03c-transport-inproc.md
+		spec\04-plugin-orchestration.md = spec\04-plugin-orchestration.md
+		spec\05-gib-functions.md = spec\05-gib-functions.md
+		spec\06-dsls.md = spec\06-dsls.md
+		spec\README.md = spec\README.md
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

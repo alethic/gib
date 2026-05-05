@@ -134,7 +134,7 @@ The most common shape for a plugin Function Host is simply an **executable** sit
 The protocol has three small pieces:
 
 - **Discovery.** Each plugin in the directory is laid out as a self-describing bundle: an executable plus a small **host manifest** sitting next to it. The manifest declares the host's identity (a stable name and version), the URI schemes/prefixes it claims to serve, the transports it can speak, and any launch-time options it accepts. The orchestrator scans the directory, reads each manifest, and builds a routing table: "URIs matching *this* shape go to *that* host." No code from the plugin runs during discovery — the manifest is enough to decide whether and when the host is needed.
-- **Launch.** When the orchestrator first needs a host (because a `FunctionRef` resolved to one of its URIs, or because something subscribed to a channel the host owns), it spawns the executable as a child process. The orchestrator passes launch parameters — typically the transport(s) to bind, an authentication token the orchestrator will use on subsequent calls, and a working/data directory — via well-defined command-line arguments and environment variables. The host is free to run in whatever runtime it likes; the orchestrator only cares that it eventually announces itself.
+- **Launch.** When the orchestrator first needs a host — because a `FunctionRef` resolved to one of its URIs and something is about to `Invoke` it — it spawns the executable as a child process. Note that *subscribing* to a channel is never what triggers a launch: a channel is only reachable as long as the function that produced it is still running (or other subscribers are already attached), so by the time anyone has a channel URI to subscribe to, the host that owns it is by definition already up. Launch is always provoked by a function call, not by a subscription.
 - **Handshake.** Once running, the host **publishes its endpoint** back to the orchestrator. The simplest form is to write a single line to standard output (or to a known file path supplied at launch) containing the endpoint URI it is listening on — `http+unix:///run/gib/host-7c.sock`, `grpc://127.0.0.1:51244`, or similar. The orchestrator reads that line, treats the URI as the host's base endpoint, and from then on routes any URI in the host's claimed namespace to it using the ordinary spec operations. The handshake itself carries no schema information; `FunctionSchema`s are always retrieved dynamically from each function's own endpoint via the spec's metadata operation, the same way any other client would fetch them.
 
 Once launched, a host is just another peer Function Host on the network. Its lifetime is managed by the orchestrator the same way every other resource is: as long as something in the pipeline holds references that route to URIs on this host, it stays alive; once nothing does, the orchestrator can shut it down (gracefully, via a spec-defined shutdown operation) and reclaim the process. A host that crashes is relaunched on the next URI that needs it; a host that is uninstalled (its directory deleted) is dropped from the routing table on the next scan.
@@ -305,7 +305,7 @@ Other transports do the equivalent in their own native way — gRPC has its own 
 
 Two consequences of this shape are worth calling out, because they are what make the binding work cleanly with the rest of the model:
 
-- **`Invoke` is short-lived; the channels it returns are not.** The `POST` completes as soon as the host has instantiated the function and allocated its output channels. The HTTP request is *not* the lifetime tether for the function — that role belongs to the references and subscriptions on the resulting channels, exactly as described under *Channel lifetime is reference-counted*. A caller is therefore free to invoke a function, take the returned channel URIs, hand them to some other party, and drop the connection; the function keeps running because *something* still holds references to its outputs, not because the original `POST` is still open.
+- **The HTTP request itself holds the call open.** The `POST` for `Invoke` does not return as soon as the function has been wired up; it stays open for the duration of the call. The function runs while the request is open and terminates when it either completes naturally or the client cancels the request. There is no separate liveness or reference-counting protocol layered on top — the in-flight HTTP/2 stream *is* the reference. The same applies to `Subscribe`: the channel stays alive on the owning host as long as at least one `Subscribe` `GET` is held open against it (in addition to whatever local references the producing function holds). HTTP/2 makes this practical: many concurrent long-lived streams over a single connection are exactly what the protocol was built for.
 - **Channel content has one logical shape, regardless of encoding.** Whether a channel is being delivered as the body of a `Subscribe` `GET` or referenced by URI in the body of an `Invoke` `POST`, the *logical* representation of a signal is the same — the spec's signal hierarchy *is* the payload format. The concrete bytes (Protobuf today, possibly other encodings in future) are whatever the transport-level content negotiation picked; the signal type system is what both ends agree on above that.
 
 ### Errors and exceptions
@@ -335,16 +335,17 @@ This is what makes `Invoke` work the way it does. Because the caller supplies *c
 
 It also explains the channel ownership rule introduced earlier ("the sender owns the log") in concrete terms: the sender's *host* is the authoritative source for the channel's history, retention, and compaction. Every other host is a subscriber that reaches back to the owner over a transport.
 
-### Channel lifetime is reference-counted
+### Channel lifetime falls out of held-open requests
 
-Channels are not retained forever, and the specification does not require any explicit `Close` or `Delete` operation to clean them up. Instead, a channel lives exactly as long as *something* still cares about it:
+Channels are not retained forever, and the specification does not require any explicit `Close` or `Delete` operation to clean them up. There is also no separate distributed reference-counting protocol — the transport's own notion of "the request is still open" is what counts. On HTTP, that means:
 
-- A channel is **garbage collected** when there is no remaining local reference to it on its owning host *and* no active connections to its endpoint from any other host.
-- A running function holds a local reference to each of its own output channels for as long as it is running. That alone keeps those channels alive — even if no one is currently subscribed.
-- A subscriber holding an open `Subscribe` connection counts as an active connection on the owner's side and likewise keeps the channel alive.
-- Once the producing function stops *and* every subscriber has dropped its connection, the owner has no reason to retain the channel and is free to release it.
+- A running function holds a local reference to each of its own output channels for as long as it is running, which on the wire is *for as long as its `Invoke` request is still open on the calling side*. When the caller cancels the `POST`, or the function naturally completes and the response stream closes, that local reference goes away.
+- Each subscriber holding an open `Subscribe` `GET` against a channel counts as a live reference on the owning host. The channel cannot be reclaimed while any such stream is open.
+- Once the producing function's `Invoke` has ended *and* every `Subscribe` stream against its outputs has closed, the owner has no held-open request keeping the channel reachable and is free to release it.
 
-The practical effect is that lifetime management falls out of the same references and connections that already exist for dataflow. There is no separate ownership protocol, no leases, no manual teardown — a channel exists for as long as it is meaningfully reachable, and is reclaimed otherwise.
+What this consumes on the host is small and concrete: an entry in some table representing an ongoing operation — one row per held-open `Invoke`, one row per held-open `Subscribe`. Cancelling the request removes the row; the channel and the function fall out of scope with it. Other transports do the equivalent with whatever "this call is still in progress" primitive they natively provide; the principle is the same.
+
+The practical effect is that lifetime management falls out of the same requests and streams that already exist for dataflow. There is no separate ownership protocol, no leases, no manual teardown — a channel exists for as long as some transport-level operation is still holding it open, and is reclaimed otherwise.
 
 ### Where the implementation fits
 
@@ -402,13 +403,15 @@ This is event sourcing, applied to the wires between functions:
 
 Because signals describe *changes*, the channel itself is the durable record of what happened. Caches, change-detection files, and timestamp comparisons — the things traditional build systems invent to recover incrementality — are unnecessary: the incremental information *is* the channel.
 
-### Senders own the log; signals can be flushed
+### Senders own the log; history is compacted, not flushed blindly
 
-The history on a channel is not infinitely retained by contract. The **sender decides** when historical signals can be flushed or purged. This matters in practice:
+The history on a channel is not infinitely retained by contract. The **sender decides** when earlier signals are no longer load-bearing and can be replaced by a more compact prefix that folds to the same current state. The rule is: a late subscriber that reads the retained prefix and then follows live signals must end up in the same logical state as a subscriber that has been attached the whole time. As long as that holds, the sender is free to compact.
 
-- A file watcher that has emitted thousands of `Add`/`Remove` signals can, when convenient, emit a `Clear` followed by a fresh batch of `Add` signals — collapsing its history into an equivalent but smaller representation.
-- A long-lived sequence channel can be truncated when its early entries are no longer interesting.
-- A value channel only ever cares about its latest value; older values are implicitly superseded.
+This matters in practice:
+
+- A scalar value channel only ever cares about its latest value. Each new value is emitted as a `Reset` followed by a `Set` (or an equivalent paired signal), which makes earlier values formally superseded — the retained prefix collapses to a single current value.
+- A file watcher that has emitted thousands of `Add`/`Remove` signals can, when convenient, emit a `Clear` followed by a fresh batch of `Add` signals representing the current set — collapsing its history into an equivalent but smaller representation. This is something the sender knows holistically: it knows when prior deltas no longer matter.
+- A long-lived sequence channel can be truncated when its early entries are no longer interesting, in the same way: a `Clear` followed by the entries the sender wants late joiners to still see.
 
 Functions must therefore be written so that they react to *signals*, not to a fixed historical position. Late joiners get whatever the sender has chosen to retain plus everything from then on; they should always end up in the same logical state.
 
